@@ -180,15 +180,15 @@ class Bolt(VecTask):
         asset_options.thickness = 0.01
         asset_options.disable_gravity = False
 
-        anymal_asset = self.gym.load_asset(self.sim, asset_root, asset_file, asset_options)
-        self.num_dof = self.gym.get_asset_dof_count(anymal_asset)
-        self.num_bodies = self.gym.get_asset_rigid_body_count(anymal_asset)
+        bolt_asset = self.gym.load_asset(self.sim, asset_root, asset_file, asset_options)
+        self.num_dof = self.gym.get_asset_dof_count(bolt_asset)
+        self.num_bodies = self.gym.get_asset_rigid_body_count(bolt_asset)
 
         start_pose = gymapi.Transform()
         start_pose.p = gymapi.Vec3(*self.base_init_state[:3])
 
-        body_names = self.gym.get_asset_rigid_body_names(anymal_asset)
-        self.dof_names = self.gym.get_asset_dof_names(anymal_asset)
+        body_names = self.gym.get_asset_rigid_body_names(bolt_asset)
+        self.dof_names = self.gym.get_asset_dof_names(bolt_asset)
         extremity_name = "LOWER_LEG" #if asset_options.collapse_fixed_joints else "FOOT"
         feet_names = [s for s in body_names if extremity_name in s]
         self.feet_indices = torch.zeros(len(feet_names), dtype=torch.long, device=self.device, requires_grad=False)
@@ -196,7 +196,7 @@ class Bolt(VecTask):
         self.knee_indices = torch.zeros(len(knee_names), dtype=torch.long, device=self.device, requires_grad=False)
         self.base_index = 0
 
-        dof_props = self.gym.get_asset_dof_properties(anymal_asset)
+        dof_props = self.gym.get_asset_dof_properties(bolt_asset)
         for i in range(self.num_dof):
             dof_props['driveMode'][i] = gymapi.DOF_MODE_POS
             dof_props['stiffness'][i] = self.cfg["env"]["control"]["stiffness"] #self.Kp
@@ -204,24 +204,24 @@ class Bolt(VecTask):
 
         env_lower = gymapi.Vec3(-spacing, -spacing, 0.0)
         env_upper = gymapi.Vec3(spacing, spacing, spacing)
-        self.anymal_handles = []
+        self.bolt_handles = []
         self.envs = []
 
         for i in range(self.num_envs):
             # create env instance
             env_ptr = self.gym.create_env(self.sim, env_lower, env_upper, num_per_row)
-            anymal_handle = self.gym.create_actor(env_ptr, anymal_asset, start_pose, "anymal", i, 1, 0)
-            self.gym.set_actor_dof_properties(env_ptr, anymal_handle, dof_props)
-            self.gym.enable_actor_dof_force_sensors(env_ptr, anymal_handle)
+            bolt_handle = self.gym.create_actor(env_ptr, bolt_asset, start_pose, "bolt", i, 1, 0)
+            self.gym.set_actor_dof_properties(env_ptr, bolt_handle, dof_props)
+            self.gym.enable_actor_dof_force_sensors(env_ptr, bolt_handle)
             self.envs.append(env_ptr)
-            self.anymal_handles.append(anymal_handle)
+            self.bolt_handles.append(bolt_handle)
 
         for i in range(len(feet_names)):
-            self.feet_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.anymal_handles[0], feet_names[i])
+            self.feet_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.bolt_handles[0], feet_names[i])
         for i in range(len(knee_names)):
-            self.knee_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.anymal_handles[0], knee_names[i])
+            self.knee_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.bolt_handles[0], knee_names[i])
 
-        self.base_index = self.gym.find_actor_rigid_body_handle(self.envs[0], self.anymal_handles[0], "base")
+        self.base_index = self.gym.find_actor_rigid_body_handle(self.envs[0], self.bolt_handles[0], "base")
 
     def pre_physics_step(self, actions):
         self.actions = actions.clone().to(self.device)
@@ -239,7 +239,7 @@ class Bolt(VecTask):
         self.compute_reward(self.actions)
 
     def compute_reward(self, actions):
-        self.rew_buf[:], self.reset_buf[:] = compute_anymal_reward(
+        self.rew_buf[:], self.reset_buf[:] = compute_bolt_reward(
             # tensors
             self.root_states,
             self.commands,
@@ -260,7 +260,7 @@ class Bolt(VecTask):
         self.gym.refresh_net_contact_force_tensor(self.sim)
         self.gym.refresh_dof_force_tensor(self.sim)
 
-        self.obs_buf[:] = compute_anymal_observations(  # tensors
+        self.obs_buf[:] = compute_bolt_observations(  # tensors
                                                         self.root_states,
                                                         self.commands,
                                                         self.dof_pos,
@@ -309,7 +309,7 @@ class Bolt(VecTask):
 
 
 @torch.jit.script
-def compute_anymal_reward(
+def compute_bolt_reward(
     # tensors
     root_states,
     commands,
@@ -352,7 +352,7 @@ def compute_anymal_reward(
 
 
 @torch.jit.script
-def compute_anymal_observations(root_states,
+def compute_bolt_observations(root_states,
                                 commands,
                                 dof_pos,
                                 default_dof_pos,
