@@ -56,6 +56,8 @@ from .allegro_kuka.allegro_kuka_two_arms_reorientation import AllegroKukaTwoArms
 from .industreal.industreal_task_pegs_insert import IndustRealTaskPegsInsert
 from .industreal.industreal_task_gears_insert import IndustRealTaskGearsInsert
 
+from .bolt import Bolt
+
 
 def resolve_allegro_kuka(cfg, *args, **kwargs):
     subtask_name: str = cfg["env"]["subtask"]
@@ -95,6 +97,7 @@ isaacgym_task_map = {
     "Anymal": Anymal,
     "AnymalTerrain": AnymalTerrain,
     "BallBalance": BallBalance,
+    "Bolt": Bolt,
     "Cartpole": Cartpole,
     "FactoryTaskGears": FactoryTaskGears,
     "FactoryTaskInsertion": FactoryTaskInsertion,

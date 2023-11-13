@@ -111,7 +111,7 @@ task:
         schedule: "linear"  # "linear" will linearly interpolate between no rand and max rand
         schedule_steps: 3000
     actor_params:
-      anymal:
+      bolt:
         color: True
         rigid_body_properties:
           mass: 
