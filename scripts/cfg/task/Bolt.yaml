@@ -16,7 +16,7 @@ env:
     restitution: 0.        # [-]
 
   baseInitState:
-    pos: [0.0, 0.0, 0.62] # x,y,z [m]
+    pos: [0.0, 0.0, 0.5] # x,y,z [m]
     rot: [0.0, 0.0, 0.0, 1.0] # x,y,z,w [quat]
     vLinear: [0.0, 0.0, 0.0]  # x,y,z [m/s]
     vAngular: [0.0, 0.0, 0.0]  # x,y,z [rad/s]
@@ -34,20 +34,12 @@ env:
     controlFrequencyInv: 1 # 60 Hz
 
   defaultJointAngles:  # = target angles when action = 0.0
-    LF_HAA: 0.03    # [rad]
-    LH_HAA: 0.03    # [rad]
-    RF_HAA: -0.03   # [rad]
-    RH_HAA: -0.03   # [rad]
-
-    LF_HFE: 0.4     # [rad]
-    LH_HFE: -0.4    # [rad]
-    RF_HFE: 0.4     # [rad]
-    RH_HFE: -0.4    # [rad]
-
-    LF_KFE: -0.8    # [rad]
-    LH_KFE: 0.8     # [rad]
-    RF_KFE: -0.8    # [rad]
-    RH_KFE: 0.8     # [rad]
+    FL_HAA: 0.03    # [rad]
+    FR_HAA: 0.03    # [rad]
+    FL_KFE: -0.03   # [rad]
+    FR_KFE: -0.03   # [rad]
+    FL_HFE: -0.03   # [rad]
+    FR_HFE: -0.03   # [rad]
 
   urdfAsset:
     collapseFixedJoints: True
