@@ -1,0 +1,10 @@
+Metadata-Version: 2.1
+Name: isaacgymenvs
+Version: 1.5.1
+Summary: Benchmark environments for high-speed robot learning in NVIDIA IsaacGym.
+Author: NVIDIA
+Keywords: robotics,rl
+Classifier: Natural Language :: English
+Classifier: Programming Language :: Python :: 3.6, 3.7, 3.8
+Requires-Python: >=3.6
+License-File: LICENSE.txt
