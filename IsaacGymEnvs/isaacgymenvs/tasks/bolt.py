@@ -189,7 +189,7 @@ class Bolt(VecTask):
 
         body_names = self.gym.get_asset_rigid_body_names(bolt_asset)
         self.dof_names = self.gym.get_asset_dof_names(bolt_asset)
-        extremity_name = "LOWER_LEG" #if asset_options.collapse_fixed_joints else "FOOT"
+        extremity_name = "FOOT" #because FL_FOOT is linked to FL_LOWER_LEG #if asset_options.collapse_fixed_joints else "FOOT"
         feet_names = [s for s in body_names if extremity_name in s]
         self.feet_indices = torch.zeros(len(feet_names), dtype=torch.long, device=self.device, requires_grad=False)
         knee_names = [s for s in body_names if "UPPER_LEG" in s]
