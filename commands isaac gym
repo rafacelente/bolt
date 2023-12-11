@@ -1,4 +1,4 @@
-cd isaacgym
+cd bolt/isaacgym
 
 conda activate rlgpu
 
@@ -19,3 +19,5 @@ https://github.com/Gepetto/example-robot-data
 
 python train.py task=Cartpole checkpoint=runs/Cartpole_30-18-18-09/nn/Cartpole.pth test=True
 
+
+si changement de num_envs (dans les fichiers ou en commmande) attention au "assert(self.batch_size % self.minibatch_size == 0)", il faut changer la taille du minibatch aussi and le fichier cgf training ie BoltPPO.yaml
