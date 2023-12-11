@@ -50,13 +50,14 @@ class Bolt(VecTask):
         self.ang_vel_scale = self.cfg["env"]["learn"]["angularVelocityScale"]
         self.dof_pos_scale = self.cfg["env"]["learn"]["dofPositionScale"]
         self.dof_vel_scale = self.cfg["env"]["learn"]["dofVelocityScale"]
-        self.action_scale = self.cfg["env"]["control"]["actionScale"]
+        self.acti   on_scale = self.cfg["env"]["control"]["actionScale"]
 
         # reward scales
         self.rew_scales = {}
         self.rew_scales["lin_vel_xy"] = self.cfg["env"]["learn"]["linearVelocityXYRewardScale"]
         self.rew_scales["ang_vel_z"] = self.cfg["env"]["learn"]["angularVelocityZRewardScale"]
         self.rew_scales["torque"] = self.cfg["env"]["learn"]["torqueRewardScale"]
+        self.rew_scales["slip"] = self.cfg["env"]["learn"]["slipRewardScale"]
 
         # randomization
         self.randomization_params = self.cfg["task"]["randomization_params"]
@@ -339,6 +340,24 @@ def compute_bolt_reward(
 
     # torque penalty
     rew_torque = torch.sum(torch.square(torques), dim=1) * rew_scales["torque"]
+
+    # foot slip penalty (solo 12 article)
+    contact = self.contact_forces[:, self.feet_indices, 2] > 1.
+    rew_slip = torch.sum(contact * torch.square(torch.norm(base_lin_vel[:, :2]))) * rew_scales["slip"]
+
+    # foot clearance penalty (solo 12 article)
+    #rew_clearance = torch.sum() * rew_scales["clearance"]
+
+    # bipedal stability penalty (thx to the gravity vector at the center of mass)
+    #rew_stability = 
+
+    # power loss penalty (solo 12 article)
+    #rew_power_loss = torch.sum() * rew_scales["power_loss"]
+
+    # action smoothness penalty (solo 12 article)
+    #rew_smoothness = torch.square() * rew_scales["smoothness1"] + torch.square() * rew_scale["smoothness2"]
+
+    # penalties from anymal_terrain.py
 
     total_reward = rew_lin_vel_xy + rew_ang_vel_z + rew_torque
     total_reward = torch.clip(total_reward, 0., None)
