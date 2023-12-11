@@ -4,7 +4,7 @@ name: Bolt
 physics_engine: ${..physics_engine}
 
 env:
-  numEnvs: ${resolve_default:4096,${...num_envs}}
+  numEnvs: ${resolve_default:2,${...num_envs}} #4096
   envSpacing: 4.  # [m]
 
   clipObservations: 5.0
@@ -104,13 +104,13 @@ task:
       range: [0., .02]
       operation: "additive"
       distribution: "gaussian"
-    sim_params: 
-      gravity:
-        range: [0, 0.4]
-        operation: "additive"
-        distribution: "gaussian"
-        schedule: "linear"  # "linear" will linearly interpolate between no rand and max rand
-        schedule_steps: 3000
+    # sim_params: 
+    #   gravity:
+    #     range: [0, 0.4]
+    #     operation: "additive"
+    #     distribution: "gaussian"
+    #     schedule: "linear"  # "linear" will linearly interpolate between no rand and max rand
+    #     schedule_steps: 3000
     actor_params:
       bolt:
         color: True
