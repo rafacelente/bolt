@@ -52,6 +52,7 @@ env:
     angularVelocityZRewardScale: 0.5
     torqueRewardScale: -0.000025 
     slipRewardScale : -0.000025
+    balanceRewardScale : -0.000025
 
     # normalization
     linearVelocityScale: 2.0

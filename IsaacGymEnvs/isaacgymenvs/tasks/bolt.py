@@ -50,7 +50,7 @@ class Bolt(VecTask):
         self.ang_vel_scale = self.cfg["env"]["learn"]["angularVelocityScale"]
         self.dof_pos_scale = self.cfg["env"]["learn"]["dofPositionScale"]
         self.dof_vel_scale = self.cfg["env"]["learn"]["dofVelocityScale"]
-        self.acti   on_scale = self.cfg["env"]["control"]["actionScale"]
+        self.action_scale = self.cfg["env"]["control"]["actionScale"]
 
         # reward scales
         self.rew_scales = {}
@@ -58,6 +58,7 @@ class Bolt(VecTask):
         self.rew_scales["ang_vel_z"] = self.cfg["env"]["learn"]["angularVelocityZRewardScale"]
         self.rew_scales["torque"] = self.cfg["env"]["learn"]["torqueRewardScale"]
         self.rew_scales["slip"] = self.cfg["env"]["learn"]["slipRewardScale"]
+        self.rew_scales["balance"] = self.cfg["env"]["learn"]["balanceRewardScale"]
 
         # randomization
         self.randomization_params = self.cfg["task"]["randomization_params"]
@@ -112,11 +113,13 @@ class Bolt(VecTask):
         dof_state_tensor = self.gym.acquire_dof_state_tensor(self.sim)
         net_contact_forces = self.gym.acquire_net_contact_force_tensor(self.sim)
         torques = self.gym.acquire_dof_force_tensor(self.sim)
+        rigid_body_state = self.gym.acquire_rigid_body_state_tensor(self.sim)
 
         self.gym.refresh_dof_state_tensor(self.sim)
         self.gym.refresh_actor_root_state_tensor(self.sim)
         self.gym.refresh_net_contact_force_tensor(self.sim)
         self.gym.refresh_dof_force_tensor(self.sim)
+        self.gym.refresh_rigid_body_state_tensor(self.sim)
 
         # create some wrapper tensors for different slices
         self.root_states = gymtorch.wrap_tensor(actor_root_state)
@@ -125,6 +128,10 @@ class Bolt(VecTask):
         self.dof_vel = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 1]
         self.contact_forces = gymtorch.wrap_tensor(net_contact_forces).view(self.num_envs, -1, 3)  # shape: num_envs, num_bodies, xyz axis
         self.torques = gymtorch.wrap_tensor(torques).view(self.num_envs, self.num_dof)
+        self.rigid_body_state = gymtorch.wrap_tensor(rigid_body_state)
+
+        self.foot_positions = self.rigid_body_state.view(self.num_envs, self.num_bodies, 13)[:, self.feet_indices, 0:3]
+        self.foot_velocities = self.rigid_body_state.view(self.num_envs, self.num_bodies, 13)[:, self.feet_indices, 7:10]
 
         self.commands = torch.zeros(self.num_envs, 3, dtype=torch.float, device=self.device, requires_grad=False)
         self.commands_y = self.commands.view(self.num_envs, 3)[..., 1]
@@ -237,6 +244,10 @@ class Bolt(VecTask):
             self.reset_idx(env_ids)
 
         self.compute_observations()
+
+        self.foot_positions = self.rigid_body_state.view(self.num_envs, self.num_bodies, 13)[:, self.feet_indices, 0:3]
+        self.foot_velocities = self.rigid_body_state.view(self.num_envs, self.num_bodies, 13)[:, self.feet_indices, 7:10]
+
         self.compute_reward(self.actions)
 
     def compute_reward(self, actions):
@@ -253,6 +264,9 @@ class Bolt(VecTask):
             # other
             self.base_index,
             self.max_episode_length,
+            self.foot_positions, 
+            self.foot_velocities,
+            self.feet_indices,
         )
 
     def compute_observations(self):
@@ -260,6 +274,7 @@ class Bolt(VecTask):
         self.gym.refresh_actor_root_state_tensor(self.sim)
         self.gym.refresh_net_contact_force_tensor(self.sim)
         self.gym.refresh_dof_force_tensor(self.sim)
+        self.gym.refresh_rigid_body_state_tensor(self.sim)
 
         self.obs_buf[:] = compute_bolt_observations(  # tensors
                                                         self.root_states,
@@ -308,7 +323,6 @@ class Bolt(VecTask):
 ###=========================jit functions=========================###
 #####################################################################
 
-
 @torch.jit.script
 def compute_bolt_reward(
     # tensors
@@ -322,7 +336,10 @@ def compute_bolt_reward(
     rew_scales,
     # other
     base_index,
-    max_episode_length
+    max_episode_length,
+    foot_positions,
+    foot_velocities, 
+    feet_indices,
 ):
     # (reward, reset, feet_in air, feet_air_time, episode sums)
     # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Dict[str, float], int, int) -> Tuple[Tensor, Tensor]
@@ -342,8 +359,11 @@ def compute_bolt_reward(
     rew_torque = torch.sum(torch.square(torques), dim=1) * rew_scales["torque"]
 
     # foot slip penalty (solo 12 article)
-    contact = self.contact_forces[:, self.feet_indices, 2] > 1.
-    rew_slip = torch.sum(contact * torch.square(torch.norm(base_lin_vel[:, :2]))) * rew_scales["slip"]
+    contact = torch.norm(contact_forces[:, feet_indices, :], dim=2) > 1
+    rew_slip = torch.sum(contact[:, feet_indices] * torch.square(torch.norm(foot_velocities[:, feet_indices, :2], dim = 2), dim = 1)) * rew_scales["slip"]
+
+    #keep balance r = -0.015*(vitesse_rot_base_x²+vitesse_rot_base_y²)
+    rew_balance = torch.sum(torch.square(base_ang_vel[:, :2]), dim =1) * rew_scales["balance"]
 
     # foot clearance penalty (solo 12 article)
     #rew_clearance = torch.sum() * rew_scales["clearance"]
