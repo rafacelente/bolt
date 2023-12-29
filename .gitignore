@@ -1,2 +1,5 @@
 .python-version
 venv
+*pyc
+IsaacGymEnvs/test
+.gitignore
