@@ -26,8 +26,11 @@
     <!-- BASE LINK COLLISION -->
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
+      <!-- geometry>
         <mesh filename="../meshes/stl/bolt_body.stl"/>
+      </geometry -->
+      <geometry>
+        <box size="0.155 0.164 0.095" />
       </geometry>
       <material name="grey">
         <color rgba="0.8 0.8 0.8 1.0"/>
@@ -79,7 +82,7 @@
       </material>
     </visual>
     <!-- UPPER LEG LINK COLLISION -->
-    <collision>
+    <!-- <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/stl/bolt_hip_fe_left_side.stl"/>
@@ -87,12 +90,12 @@
       <material name="grey">
         <color rgba="0.8 0.8 0.8 1.0"/>
       </material>
-    </collision>
+    </collision> -->
     <!-- Bullet specific paramters -->
-    <contact>
+    <!-- contact>
       <lateral_friction value="1.0"/>
       <restitution value="0.5"/>
-    </contact>
+    </contact -->
   </link>
   <joint name="FL_HFE" type="revolute">
     <parent link="FL_SHOULDER"/>
@@ -124,8 +127,11 @@
     <!-- UPPER LEG LINK COLLISION -->
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
+      <!-- geometry>
         <mesh filename="../meshes/stl/upper_leg_200mm_left_side.stl"/>
+      </geometry -->
+      <geometry>
+        <capsule length="0.237" radius="0.022" />
       </geometry>
       <material name="grey">
         <color rgba="0.8 0.8 0.8 1.0"/>
@@ -169,8 +175,11 @@
     <!-- LOWER LEG LINK COLLISION -->
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
+      <!-- geometry>
         <mesh filename="../meshes/stl/lower_leg_200mm_left_side.stl"/>
+      </geometry -->
+      <geometry>
+        <capsule length="0.227" radius="0.0135" />
       </geometry>
       <material name="grey">
         <color rgba="0.8 0.8 0.8 1.0"/>
@@ -198,7 +207,7 @@
     <!-- This link is symmetrical left or right -->
     <inertial>
       <origin rpy="0 0 0" xyz="0 0 0.00035767"/>
-      <mass value="0.00000000"/>
+      <mass value="0.012"/>
       <inertia ixx="0.00000057" ixy="0.0" ixz="0.0" iyy="0.00000084" iyz="0.0" izz="0.00000053"/>
     </inertial>
     <!-- FOOT VISUAL -->
@@ -214,8 +223,11 @@
     <!-- FOOT COLLISION -->
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
+      <!-- geometry>
         <mesh filename="../meshes/stl/bolt_foot.stl"/>
+      </geometry -->
+      <geometry>
+        <sphere radius="0.02" />
       </geometry>
       <material name="grey">
         <color rgba="0.8 0.8 0.8 1.0"/>
@@ -264,7 +276,7 @@
       </material>
     </visual>
     <!-- UPPER LEG LINK COLLISION -->
-    <collision>
+    <!-- collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/stl/bolt_hip_fe_right_side.stl"/>
@@ -272,12 +284,12 @@
       <material name="grey">
         <color rgba="0.8 0.8 0.8 1.0"/>
       </material>
-    </collision>
+    </collision -->
     <!-- Bullet specific paramters -->
-    <contact>
+    <!-- contact>
       <lateral_friction value="1.0"/>
       <restitution value="0.5"/>
-    </contact>
+    </contact -->
   </link>
   <joint name="FR_HFE" type="revolute">
     <parent link="FR_SHOULDER"/>
@@ -309,8 +321,11 @@
     <!-- UPPER LEG LINK COLLISION -->
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
+      <!-- geometry>
         <mesh filename="../meshes/stl/upper_leg_200mm_right_side.stl"/>
+      </geometry -->
+      <geometry>
+        <capsule length="0.237" radius="0.022" />
       </geometry>
       <material name="grey">
         <color rgba="0.8 0.8 0.8 1.0"/>
@@ -354,8 +369,11 @@
     <!-- LOWER LEG LINK COLLISION -->
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
+      <!-- geometry>
         <mesh filename="../meshes/stl/lower_leg_200mm_right_side.stl"/>
+      </geometry -->
+      <geometry>
+        <capsule length="0.227" radius="0.0135" />
       </geometry>
       <material name="grey">
         <color rgba="0.8 0.8 0.8 1.0"/>
@@ -383,7 +401,7 @@
     <!-- This link is symmetrical left or right -->
     <inertial>
       <origin rpy="0 0 0" xyz="0 0 0.00035767"/>
-      <mass value="0.00000000"/>
+      <mass value="0.012"/>
       <inertia ixx="0.00000057" ixy="0.0" ixz="0.0" iyy="0.00000084" iyz="0.0" izz="0.00000053"/>
     </inertial>
     <!-- FOOT VISUAL -->
@@ -399,8 +417,11 @@
     <!-- FOOT COLLISION -->
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
-      <geometry>
+      <!-- geometry>
         <mesh filename="../meshes/stl/bolt_foot.stl"/>
+      </geometry -->
+      <geometry>
+        <sphere radius="0.02" />
       </geometry>
       <material name="grey">
         <color rgba="0.8 0.8 0.8 1.0"/>
