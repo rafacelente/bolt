@@ -58,7 +58,6 @@ from .industreal.industreal_task_gears_insert import IndustRealTaskGearsInsert
 
 from .bolt import Bolt
 
-
 def resolve_allegro_kuka(cfg, *args, **kwargs):
     subtask_name: str = cfg["env"]["subtask"]
     subtask_map = dict(

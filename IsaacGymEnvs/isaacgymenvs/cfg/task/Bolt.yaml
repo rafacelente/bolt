@@ -51,7 +51,7 @@ env:
     linearVelocityXYRewardScale: 1.0
     angularVelocityZRewardScale: 0.5
     torqueRewardScale: -0.000025 
-    slipRewardScale : -0.000025
+    slipRewardScale : -0.025
     balanceRewardScale : -0.000025
 
     # normalization

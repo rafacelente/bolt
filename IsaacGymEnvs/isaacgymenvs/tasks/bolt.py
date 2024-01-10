@@ -247,7 +247,6 @@ class Bolt(VecTask):
 
         self.foot_positions = self.rigid_body_state.view(self.num_envs, self.num_bodies, 13)[:, self.feet_indices, 0:3]
         self.foot_velocities = self.rigid_body_state.view(self.num_envs, self.num_bodies, 13)[:, self.feet_indices, 7:10]
-
         self.compute_reward(self.actions)
 
     def compute_reward(self, actions):
@@ -338,11 +337,11 @@ def compute_bolt_reward(
     base_index,
     max_episode_length,
     foot_positions,
-    foot_velocities, 
+    foot_velocities,
     feet_indices,
 ):
     # (reward, reset, feet_in air, feet_air_time, episode sums)
-    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Dict[str, float], int, int) -> Tuple[Tensor, Tensor]
+    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Dict[str, float], int, int, Tensor, Tensor, Tensor) -> Tuple[Tensor, Tensor]
 
     # prepare quantities (TODO: return from obs ?)
     base_quat = root_states[:, 3:7]
@@ -360,10 +359,10 @@ def compute_bolt_reward(
 
     # foot slip penalty (solo 12 article)
     contact = torch.norm(contact_forces[:, feet_indices, :], dim=2) > 1
-    rew_slip = torch.sum(contact[:, feet_indices] * torch.square(torch.norm(foot_velocities[:, feet_indices, :2], dim = 2), dim = 1)) * rew_scales["slip"]
+    rew_slip = torch.sum(contact[:, feet_indices] * torch.square(torch.norm(foot_velocities[:, feet_indices, :2], dim = 2)), dim = 1) * rew_scales["slip"]
 
     #keep balance r = -0.015*(vitesse_rot_base_x²+vitesse_rot_base_y²)
-    rew_balance = torch.sum(torch.square(base_ang_vel[:, :2]), dim =1) * rew_scales["balance"]
+    rew_balance = torch.sum(torch.square(base_ang_vel[:, :2]), dim=1) * rew_scales["balance"]
 
     # foot clearance penalty (solo 12 article)
     #rew_clearance = torch.sum() * rew_scales["clearance"]
@@ -379,7 +378,7 @@ def compute_bolt_reward(
 
     # penalties from anymal_terrain.py
 
-    total_reward = rew_lin_vel_xy + rew_ang_vel_z + rew_torque
+    total_reward = rew_lin_vel_xy + rew_ang_vel_z + rew_torque + rew_balance + rew_slip
     total_reward = torch.clip(total_reward, 0., None)
     # reset agents
     reset = torch.norm(contact_forces[:, base_index, :], dim=1) > 1.
