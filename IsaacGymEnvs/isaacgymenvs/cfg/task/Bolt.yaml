@@ -53,6 +53,9 @@ env:
     torqueRewardScale: -0.000025 
     slipRewardScale : -0.025
     balanceRewardScale : -0.000025
+    maxFootHeightReward : 0.25
+    clearanceRewardScale : -0.000025
+
 
     # normalization
     linearVelocityScale: 2.0

@@ -59,6 +59,9 @@ class Bolt(VecTask):
         self.rew_scales["torque"] = self.cfg["env"]["learn"]["torqueRewardScale"]
         self.rew_scales["slip"] = self.cfg["env"]["learn"]["slipRewardScale"]
         self.rew_scales["balance"] = self.cfg["env"]["learn"]["balanceRewardScale"]
+        self.rew_scales["maxHeight"] = self.cfg["env"]["learn"]["maxFootHeightReward"]
+        self.rew_scales["clearance"] = self.cfg["env"]["learn"]["clearanceRewardScale"]
+
 
         # randomization
         self.randomization_params = self.cfg["task"]["randomization_params"]
@@ -365,7 +368,7 @@ def compute_bolt_reward(
     rew_balance = torch.sum(torch.square(base_ang_vel[:, :2]), dim=1) * rew_scales["balance"]
 
     # foot clearance penalty (solo 12 article)
-    #rew_clearance = torch.sum() * rew_scales["clearance"]
+    rew_clearance = torch.sum(torch.square(foot_positions[:, feet_indices, 2] - rew_scales["maxHeight"]) * torch.sqrt(torch.norm(foot_velocities[:, feet_indices, :2], dim = 2)), dim = 1) * rew_scales["clearance"]
 
     # bipedal stability penalty (thx to the gravity vector at the center of mass)
     #rew_stability = 
@@ -373,12 +376,12 @@ def compute_bolt_reward(
     # power loss penalty (solo 12 article)
     #rew_power_loss = torch.sum() * rew_scales["power_loss"]
 
-    # action smoothness penalty (solo 12 article)
+    # action smoothness penalty (solo 12 article) + heuristic based
     #rew_smoothness = torch.square() * rew_scales["smoothness1"] + torch.square() * rew_scale["smoothness2"]
 
     # penalties from anymal_terrain.py
 
-    total_reward = rew_lin_vel_xy + rew_ang_vel_z + rew_torque + rew_balance + rew_slip
+    total_reward = rew_lin_vel_xy + rew_ang_vel_z + rew_torque + rew_balance + rew_slip + rew_clearance
     total_reward = torch.clip(total_reward, 0., None)
     # reset agents
     reset = torch.norm(contact_forces[:, base_index, :], dim=1) > 1.
