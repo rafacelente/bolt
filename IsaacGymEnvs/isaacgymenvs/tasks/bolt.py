@@ -205,6 +205,8 @@ class Bolt(VecTask):
         self.feet_indices = torch.zeros(len(feet_names), dtype=torch.long, device=self.device, requires_grad=False)
         knee_names = [s for s in body_names if "UPPER_LEG" in s]
         self.knee_indices = torch.zeros(len(knee_names), dtype=torch.long, device=self.device, requires_grad=False)
+        shoulder_names = [s for s in body_names if "SHOULDER" in s]
+        self.should_indices = torch.zeros(len(shoulder_names), dtype=torch.long, device=self.device, requires_grad=False)
         self.base_index = 0
 
         dof_props = self.gym.get_asset_dof_properties(bolt_asset)
@@ -259,6 +261,7 @@ class Bolt(VecTask):
             self.commands,
             self.torques,
             self.contact_forces,
+            self.should_indices,
             self.knee_indices,
             self.progress_buf,
             # Dict
@@ -332,6 +335,7 @@ def compute_bolt_reward(
     commands,
     torques,
     contact_forces,
+    shoulder_indices,
     knee_indices,
     episode_lengths,
     # Dict
@@ -344,7 +348,7 @@ def compute_bolt_reward(
     feet_indices,
 ):
     # (reward, reset, feet_in air, feet_air_time, episode sums)
-    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Dict[str, float], int, int, Tensor, Tensor, Tensor) -> Tuple[Tensor, Tensor]
+    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Dict[str, float], int, int, Tensor, Tensor, Tensor) -> Tuple[Tensor, Tensor]
 
     # prepare quantities (TODO: return from obs ?)
     base_quat = root_states[:, 3:7]
@@ -385,6 +389,7 @@ def compute_bolt_reward(
     total_reward = torch.clip(total_reward, 0., None)
     # reset agents
     reset = torch.norm(contact_forces[:, base_index, :], dim=1) > 1.
+    reset = reset | torch.any(torch.norm(contact_forces[:, shoulder_indices, :], dim=2) > 1., dim=1)
     reset = reset | torch.any(torch.norm(contact_forces[:, knee_indices, :], dim=2) > 1., dim=1)
     time_out = episode_lengths >= max_episode_length - 1  # no terminal reward for time-outs
     reset = reset | time_out
