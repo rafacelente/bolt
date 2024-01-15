@@ -50,7 +50,7 @@ class Bolt(VecTask):
         self.ang_vel_scale = self.cfg["env"]["learn"]["angularVelocityScale"]
         self.dof_pos_scale = self.cfg["env"]["learn"]["dofPositionScale"]
         self.dof_vel_scale = self.cfg["env"]["learn"]["dofVelocityScale"]
-        self.acti   on_scale = self.cfg["env"]["control"]["actionScale"]
+        self.action_scale = self.cfg["env"]["control"]["actionScale"]
 
         # reward scales
         self.rew_scales = {}
@@ -342,8 +342,8 @@ def compute_bolt_reward(
     rew_torque = torch.sum(torch.square(torques), dim=1) * rew_scales["torque"]
 
     # foot slip penalty (solo 12 article)
-    contact = self.contact_forces[:, self.feet_indices, 2] > 1.
-    rew_slip = torch.sum(contact * torch.square(torch.norm(base_lin_vel[:, :2]))) * rew_scales["slip"]
+    #contact = contact_forces[:, feet_indices, 2] > 1.
+    #rew_slip = torch.sum(contact * torch.square(torch.norm(base_lin_vel[:, :2]))) * rew_scales["slip"]
 
     # foot clearance penalty (solo 12 article)
     #rew_clearance = torch.sum() * rew_scales["clearance"]
