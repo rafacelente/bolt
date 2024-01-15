@@ -52,7 +52,7 @@ params:
     gamma: 0.99
     tau: 0.95
     e_clip: 0.2
-    entropy_coef: 0.0
+    entropy_coef: 0.01
     learning_rate: 3.e-4 # overwritten by adaptive lr_schedule
     lr_schedule: adaptive
     kl_threshold: 0.008 # target kl for adaptive lr

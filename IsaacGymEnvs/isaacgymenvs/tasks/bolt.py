@@ -390,9 +390,14 @@ def compute_bolt_reward(
     # action smoothness penalty (solo 12 article) + heuristic based
     #rew_smoothness = torch.square() * rew_scales["smoothness1"] + torch.square() * rew_scale["smoothness2"]
 
+    # reward for air time (solo 12 article)
+    # 1/(1 + exp(-t/0.25)
+    #print(episode_lengths)
+    rew_air_time = 0.0025/(1 + torch.exp(-episode_lengths/0.5))
+    #print(rew_air_time)
     # penalties from anymal_terrain.py
 
-    total_reward = rew_lin_vel_xy + rew_ang_vel_z + rew_torque + rew_balance + rew_slip + rew_clearance
+    total_reward = rew_lin_vel_xy + rew_ang_vel_z + rew_torque + rew_balance + rew_slip + rew_clearance + rew_air_time
     total_reward = torch.clip(total_reward, 0., None)
     # reset agents
     reset = torch.norm(contact_forces[:, base_index, :], dim=1) > 1.
