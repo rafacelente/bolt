@@ -200,14 +200,15 @@ class Bolt(VecTask):
 
         body_names = self.gym.get_asset_rigid_body_names(bolt_asset)
         self.dof_names = self.gym.get_asset_dof_names(bolt_asset)
-        extremity_name = "FOOT" #because FL_FOOT is linked to FL_LOWER_LEG #if asset_options.collapse_fixed_joints else "FOOT"
+        extremity_name = "LOWER_LEG" if asset_options.collapse_fixed_joints else "FOOT"
         feet_names = [s for s in body_names if extremity_name in s]
         self.feet_indices = torch.zeros(len(feet_names), dtype=torch.long, device=self.device, requires_grad=False)
         knee_names = [s for s in body_names if "UPPER_LEG" in s]
         self.knee_indices = torch.zeros(len(knee_names), dtype=torch.long, device=self.device, requires_grad=False)
         shoulder_names = [s for s in body_names if "SHOULDER" in s]
-        self.should_indices = torch.zeros(len(shoulder_names), dtype=torch.long, device=self.device, requires_grad=False)
+        self.shoulder_indices = torch.zeros(len(shoulder_names), dtype=torch.long, device=self.device, requires_grad=False)
         self.base_index = 0
+        base_name = "base_link"
 
         dof_props = self.gym.get_asset_dof_properties(bolt_asset)
         for i in range(self.num_dof):
@@ -233,8 +234,15 @@ class Bolt(VecTask):
             self.feet_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.bolt_handles[0], feet_names[i])
         for i in range(len(knee_names)):
             self.knee_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.bolt_handles[0], knee_names[i])
+        for i in range(len(shoulder_names)):
+            self.shoulder_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.bolt_handles[0], shoulder_names[i])
 
-        self.base_index = self.gym.find_actor_rigid_body_handle(self.envs[0], self.bolt_handles[0], "base")
+        self.base_index = self.gym.find_actor_rigid_body_handle(self.envs[0], self.bolt_handles[0], base_name)
+
+        print(f"feet_indices: {self.feet_indices}")
+        print(f"knee_indices: {self.knee_indices}")
+        print(f"shoulder_indices: {self.shoulder_indices}")
+        print(f"base_index: {self.base_index}")
 
     def pre_physics_step(self, actions):
         self.actions = actions.clone().to(self.device)
@@ -261,7 +269,7 @@ class Bolt(VecTask):
             self.commands,
             self.torques,
             self.contact_forces,
-            self.should_indices,
+            self.shoulder_indices,
             self.knee_indices,
             self.progress_buf,
             # Dict
