@@ -133,8 +133,8 @@ class Bolt(VecTask):
         self.torques = gymtorch.wrap_tensor(torques).view(self.num_envs, self.num_dof)
         self.rigid_body_state = gymtorch.wrap_tensor(rigid_body_state)
 
-        self.foot_positions = self.rigid_body_state.view(self.num_envs, self.num_bodies, 13)[:, self.feet_indices, 0:3]
-        self.foot_velocities = self.rigid_body_state.view(self.num_envs, self.num_bodies, 13)[:, self.feet_indices, 7:10]
+        #self.foot_positions = self.rigid_body_state.view(self.num_envs, self.num_bodies, 13)[:, self.feet_indices, 0:3]
+        #self.foot_velocities = self.rigid_body_state.view(self.num_envs, self.num_bodies, 13)[:, self.feet_indices, 7:10]
 
         self.commands = torch.zeros(self.num_envs, 3, dtype=torch.float, device=self.device, requires_grad=False)
         self.commands_y = self.commands.view(self.num_envs, 3)[..., 1]
@@ -207,7 +207,7 @@ class Bolt(VecTask):
         self.knee_indices = torch.zeros(len(knee_names), dtype=torch.long, device=self.device, requires_grad=False)
         shoulder_names = [s for s in body_names if "SHOULDER" in s]
         self.shoulder_indices = torch.zeros(len(shoulder_names), dtype=torch.long, device=self.device, requires_grad=False)
-        self.base_index = 0
+        self.base_index = torch.zeros(1, dtype=torch.long, device=self.device, requires_grad=False)
         base_name = "base_link"
 
         dof_props = self.gym.get_asset_dof_properties(bolt_asset)
@@ -237,12 +237,8 @@ class Bolt(VecTask):
         for i in range(len(shoulder_names)):
             self.shoulder_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.bolt_handles[0], shoulder_names[i])
 
-        self.base_index = self.gym.find_actor_rigid_body_handle(self.envs[0], self.bolt_handles[0], base_name)
+        self.base_index = torch.tensor(self.gym.find_actor_rigid_body_handle(self.envs[0], self.bolt_handles[0], base_name))
 
-        print(f"feet_indices: {self.feet_indices}")
-        print(f"knee_indices: {self.knee_indices}")
-        print(f"shoulder_indices: {self.shoulder_indices}")
-        print(f"base_index: {self.base_index}")
 
     def pre_physics_step(self, actions):
         self.actions = actions.clone().to(self.device)
@@ -358,6 +354,7 @@ def compute_bolt_reward(
     # (reward, reset, feet_in air, feet_air_time, episode sums)
     # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Dict[str, float], int, int, Tensor, Tensor, Tensor) -> Tuple[Tensor, Tensor]
 
+    #print(f"feet_indices: {type(feet_indices)}")
     # prepare quantities (TODO: return from obs ?)
     base_quat = root_states[:, 3:7]
     base_lin_vel = quat_rotate_inverse(base_quat, root_states[:, 7:10])
@@ -369,18 +366,20 @@ def compute_bolt_reward(
     rew_lin_vel_xy = torch.exp(-lin_vel_error/0.25) * rew_scales["lin_vel_xy"]
     rew_ang_vel_z = torch.exp(-ang_vel_error/0.25) * rew_scales["ang_vel_z"]
 
+
     # torque penalty
     rew_torque = torch.sum(torch.square(torques), dim=1) * rew_scales["torque"]
 
+
     # foot slip penalty (solo 12 article)
     contact = torch.norm(contact_forces[:, feet_indices, :], dim=2) > 1
-    rew_slip = torch.sum(contact[:, feet_indices] * torch.square(torch.norm(foot_velocities[:, feet_indices, :2], dim = 2)), dim = 1) * rew_scales["slip"]
+    rew_slip = torch.sum(contact * torch.square(torch.norm(foot_velocities[:, :, :2], dim = 2)), dim = 1) * rew_scales["slip"]
 
     #keep balance r = -0.015*(vitesse_rot_base_x²+vitesse_rot_base_y²)
     rew_balance = torch.sum(torch.square(base_ang_vel[:, :2]), dim=1) * rew_scales["balance"]
 
     # foot clearance penalty (solo 12 article)
-    rew_clearance = torch.sum(torch.square(foot_positions[:, feet_indices, 2] - rew_scales["maxHeight"]) * torch.sqrt(torch.norm(foot_velocities[:, feet_indices, :2], dim = 2)), dim = 1) * rew_scales["clearance"]
+    rew_clearance = torch.sum(torch.square(foot_positions[:, :, 2] - rew_scales["maxHeight"]) * torch.sqrt(torch.norm(foot_velocities[:, :, :2], dim = 2)), dim = 1) * rew_scales["clearance"]
 
     # bipedal stability penalty (thx to the gravity vector at the center of mass)
     #rew_stability = 
