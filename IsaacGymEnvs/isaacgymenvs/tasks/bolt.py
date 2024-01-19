@@ -346,8 +346,8 @@ class Bolt(VecTask):
 
         # log metrics
         for rew, name in all_rewads:
-            self.rewards_episode[name] += rew.mean().item()
-            self.rewards_episode["total_reward"] += total_reward.mean().item()
+            self.rewards_episode[name] += rew
+        self.rewards_episode["total_reward"] += total_reward
 
         # reset agents
         reset = torch.norm(self.contact_forces[:, self.base_index, :], dim=1) > 1.
@@ -437,11 +437,11 @@ class Bolt(VecTask):
                 
                 if self.episode_buffer_count >= 64:
                     wandb_dict = {key: value / self.episode_buffer_count for key, value in self.mean_rewards_64.items()}
-                    wandb.log(wandb_dict, step=self.episode_count)
+                    wandb.log(wandb_dict)
                     self.mean_rewards_64 = {
-                        key: torch.zeros(1, dtype=torch.float, device=self.device, requires_grad=False) for key in reward_keys
+                        key: torch.zeros(1, dtype=torch.float, device=self.device, requires_grad=False) for key in self.rewards_episode.keys()
                     }
-                    self.mean_rewards_buffer = 0
+                    self.episode_buffer_count = 0
                     self.rewards_episode = {
                         key: torch.zeros(self.num_envs, dtype=torch.float, device=self.device, requires_grad=False) for key in self.rewards_episode.keys()
                     }

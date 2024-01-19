@@ -3,3 +3,9 @@ venv
 *pyc
 IsaacGymEnvs/test
 IsaacGymEnvs/isaacgymenvs/runs/*
+**/__pycache__/*
+**/wandb/
+**/videos/
+*.ipynb_checkpoints
+**/eval_summaries
+**/__pycache__/
