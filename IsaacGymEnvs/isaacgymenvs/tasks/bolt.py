@@ -37,6 +37,7 @@ from isaacgymenvs.utils.torch_jit_utils import to_torch, get_axis_params, torch_
 from isaacgymenvs.tasks.base.vec_task import VecTask
 
 from typing import Tuple, Dict
+import wandb
 
 
 class Bolt(VecTask):
@@ -153,7 +154,27 @@ class Bolt(VecTask):
         self.initial_root_states[:] = to_torch(self.base_init_state, device=self.device, requires_grad=False)
         self.gravity_vec = to_torch(get_axis_params(-1., self.up_axis_idx), device=self.device).repeat((self.num_envs, 1))
         self.actions = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device, requires_grad=False)
-        self.metrics = {}
+        
+        
+        reward_keys = [
+            "air_time",
+            "clearance",
+            "balance",
+            "slip",
+            "torque",
+            "ang_vel_z",
+            "lin_vel_xy",
+            "total_reward"
+        ]
+        self.rewards_episode = {
+            key: torch.zeros(self.num_envs, dtype=torch.float, device=self.device, requires_grad=False) for key in reward_keys
+        }
+
+
+        self.episode_buffer_count = 0
+        self.mean_rewards_64 = {
+            key: torch.zeros(1, dtype=torch.float, device=self.device, requires_grad=False) for key in reward_keys
+        }
 
         # logging and metrics
         self.metrics_writer = None
@@ -166,13 +187,6 @@ class Bolt(VecTask):
 
         self.reset_idx(torch.arange(self.num_envs, device=self.device))
 
-    def log_to_wandb(self, step):
-        if self.metrics_writer is not None:
-            import wandb
-            wandb.log(self.metrics, step=step)
-            for name, value in self.metrics.items():
-                self.metrics_writer.add_scalar(name, value, step)
-    
     def create_sim(self):
         self.up_axis_idx = 2 # index of up axis: Y=1, Z=2
         self.sim = super().create_sim(self.device_id, self.graphics_device_id, self.physics_engine, self.sim_params)
@@ -276,8 +290,6 @@ class Bolt(VecTask):
         # self.compute_reward(self.actions)
         self.compute_bolt_reward(self.actions)
 
-        self.log_to_wandb(self.progress_buf[0].item())
-
 
     def compute_bolt_reward(self, actions):
         base_quat = self.root_states[:, 3:7]
@@ -295,13 +307,13 @@ class Bolt(VecTask):
 
         # foot slip penalty (solo 12 article)
         contact = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=2) > 1
-        rew_slip = torch.sum(contact * torch.square(torch.norm(foot_velocities[:, :, :2], dim = 2)), dim = 1) * rew_scales["slip"]
+        rew_slip = torch.sum(contact * torch.square(torch.norm(self.foot_velocities[:, :, :2], dim = 2)), dim = 1) * self.rew_scales["slip"]
 
         #keep balance r = -0.015*(vitesse_rot_base_x²+vitesse_rot_base_y²)
         rew_balance = torch.sum(torch.square(base_ang_vel[:, :2]), dim=1) * self.rew_scales["balance"]
 
         # foot clearance penalty (solo 12 article)
-        rew_clearance = torch.sum(torch.square(self.foot_positions[:, :, 2] - self.rew_scales["maxHeight"]) * torch.sqrt(torch.norm(foot_velocities[:, :, :2], dim = 2)), dim = 1) * rew_scales["clearance"]
+        rew_clearance = torch.sum(torch.square(self.foot_positions[:, :, 2] - self.rew_scales["maxHeight"]) * torch.sqrt(torch.norm(self.foot_velocities[:, :, :2], dim = 2)), dim = 1) * self.rew_scales["clearance"]
 
         # bipedal stability penalty (thx to the gravity vector at the center of mass)
         #rew_stability = 
@@ -334,8 +346,8 @@ class Bolt(VecTask):
 
         # log metrics
         for rew, name in all_rewads:
-            self.metrics[name] = rew.mean().item()
-            self.metrics["total_reward"] = total_reward.mean().item()
+            self.rewards_episode[name] += rew.mean().item()
+            self.rewards_episode["total_reward"] += total_reward.mean().item()
 
         # reset agents
         reset = torch.norm(self.contact_forces[:, self.base_index, :], dim=1) > 1.
@@ -416,6 +428,30 @@ class Bolt(VecTask):
 
         self.progress_buf[env_ids] = 0
         self.reset_buf[env_ids] = 1
+
+        if self.metrics_writer is not None:
+            if env_ids.numel() > 0:
+                self.episode_buffer_count += env_ids.numel()
+                for name, values in self.rewards_episode.items():
+                        self.mean_rewards_64[name] = values[env_ids].sum()
+                
+                if self.episode_buffer_count >= 64:
+                    wandb_dict = {key: value / self.episode_buffer_count for key, value in self.mean_rewards_64.items()}
+                    wandb.log(wandb_dict, step=self.episode_count)
+                    self.mean_rewards_64 = {
+                        key: torch.zeros(1, dtype=torch.float, device=self.device, requires_grad=False) for key in reward_keys
+                    }
+                    self.mean_rewards_buffer = 0
+                    self.rewards_episode = {
+                        key: torch.zeros(self.num_envs, dtype=torch.float, device=self.device, requires_grad=False) for key in self.rewards_episode.keys()
+                    }
+
+        for key in self.rewards_episode.keys():
+            self.rewards_episode[key][env_ids] = 0.
+
+        
+
+    
 
 #####################################################################
 ###=========================jit functions=========================###
