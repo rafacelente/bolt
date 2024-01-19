@@ -37,7 +37,10 @@ class WandbAlgoObserver(AlgoObserver):
                 name=experiment_name,
                 resume=True,
                 settings=wandb.Settings(start_method='fork'),
+                sync_tensorboard=True,
             )
+            if cfg.wandb_logdir is not None:
+                wandb.tensorboard.patch(root_logdir=cfg.wandb_logdir)
        
             if cfg.wandb_logcode_dir:
                 wandb.run.log_code(root=cfg.wandb_logcode_dir)

@@ -153,9 +153,26 @@ class Bolt(VecTask):
         self.initial_root_states[:] = to_torch(self.base_init_state, device=self.device, requires_grad=False)
         self.gravity_vec = to_torch(get_axis_params(-1., self.up_axis_idx), device=self.device).repeat((self.num_envs, 1))
         self.actions = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device, requires_grad=False)
+        self.metrics = {}
+
+        # logging and metrics
+        self.metrics_writer = None
+        wandb_status= self.cfg.get('wandb', None)
+        if wandb_status is not None:
+            log_metrics = wandb_status.get('log_metrics', False)
+            if log_metrics:
+                import tensorboardX
+                self.metrics_writer = tensorboardX.SummaryWriter(log_dir=self.cfg["wandb"]["root_log_dir"])
 
         self.reset_idx(torch.arange(self.num_envs, device=self.device))
 
+    def log_to_wandb(self, step):
+        if self.metrics_writer is not None:
+            import wandb
+            wandb.log(self.metrics, step=step)
+            for name, value in self.metrics.items():
+                self.metrics_writer.add_scalar(name, value, step)
+    
     def create_sim(self):
         self.up_axis_idx = 2 # index of up axis: Y=1, Z=2
         self.sim = super().create_sim(self.device_id, self.graphics_device_id, self.physics_engine, self.sim_params)
@@ -256,27 +273,99 @@ class Bolt(VecTask):
 
         self.foot_positions = self.rigid_body_state.view(self.num_envs, self.num_bodies, 13)[:, self.feet_indices, 0:3]
         self.foot_velocities = self.rigid_body_state.view(self.num_envs, self.num_bodies, 13)[:, self.feet_indices, 7:10]
-        self.compute_reward(self.actions)
+        # self.compute_reward(self.actions)
+        self.compute_bolt_reward(self.actions)
 
-    def compute_reward(self, actions):
-        self.rew_buf[:], self.reset_buf[:] = compute_bolt_reward(
-            # tensors
-            self.root_states,
-            self.commands,
-            self.torques,
-            self.contact_forces,
-            self.shoulder_indices,
-            self.knee_indices,
-            self.progress_buf,
-            # Dict
-            self.rew_scales,
-            # other
-            self.base_index,
-            self.max_episode_length,
-            self.foot_positions, 
-            self.foot_velocities,
-            self.feet_indices,
-        )
+        self.log_to_wandb(self.progress_buf[0].item())
+
+
+    def compute_bolt_reward(self, actions):
+        base_quat = self.root_states[:, 3:7]
+        base_lin_vel = quat_rotate_inverse(base_quat, self.root_states[:, 7:10])
+        base_ang_vel = quat_rotate_inverse(base_quat, self.root_states[:, 10:13])
+
+        # velocity tracking reward
+        lin_vel_error = torch.sum(torch.square(self.commands[:, :2] - base_lin_vel[:, :2]), dim=1)
+        ang_vel_error = torch.square(self.commands[:, 2] - base_ang_vel[:, 2])
+        rew_lin_vel_xy = torch.exp(-lin_vel_error/0.25) * self.rew_scales["lin_vel_xy"]
+        rew_ang_vel_z = torch.exp(-ang_vel_error/0.25) * self.rew_scales["ang_vel_z"]
+        
+        # torque penalty
+        rew_torque = torch.sum(torch.square(self.torques), dim=1) * self.rew_scales["torque"]
+
+        # foot slip penalty (solo 12 article)
+        contact = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=2) > 1
+        rew_slip = torch.sum(contact * torch.square(torch.norm(foot_velocities[:, :, :2], dim = 2)), dim = 1) * rew_scales["slip"]
+
+        #keep balance r = -0.015*(vitesse_rot_base_x²+vitesse_rot_base_y²)
+        rew_balance = torch.sum(torch.square(base_ang_vel[:, :2]), dim=1) * self.rew_scales["balance"]
+
+        # foot clearance penalty (solo 12 article)
+        rew_clearance = torch.sum(torch.square(self.foot_positions[:, :, 2] - self.rew_scales["maxHeight"]) * torch.sqrt(torch.norm(foot_velocities[:, :, :2], dim = 2)), dim = 1) * rew_scales["clearance"]
+
+        # bipedal stability penalty (thx to the gravity vector at the center of mass)
+        #rew_stability = 
+
+        # power loss penalty (solo 12 article)
+        #rew_power_loss = torch.sum() * rew_scales["power_loss"]
+
+        # action smoothness penalty (solo 12 article) + heuristic based
+        #rew_smoothness = torch.square() * rew_scales["smoothness1"] + torch.square() * rew_scale["smoothness2"]
+
+        # reward for air time (solo 12 article)
+        # 1/(1 + exp(-t/0.25)
+        rew_air_time = 0.0025/(1 + torch.exp(-self.progress_buf/0.5)) #progress_buf == episode_lengths
+        
+        # penalties from anymal_terrain.py
+
+        all_rewads = [
+            (rew_air_time, "air_time"),
+            (rew_clearance, "clearance"),
+            (rew_balance, "balance"),
+            (rew_slip, "slip"),
+            (rew_torque, "torque"),
+            (rew_ang_vel_z, "ang_vel_z"),
+            (rew_lin_vel_xy, "lin_vel_xy"),
+        ]
+
+
+        total_reward = rew_lin_vel_xy + rew_ang_vel_z + rew_torque + rew_balance + rew_slip + rew_clearance + rew_air_time
+        total_reward = torch.clip(total_reward, 0., None)
+
+        # log metrics
+        for rew, name in all_rewads:
+            self.metrics[name] = rew.mean().item()
+            self.metrics["total_reward"] = total_reward.mean().item()
+
+        # reset agents
+        reset = torch.norm(self.contact_forces[:, self.base_index, :], dim=1) > 1.
+        reset = reset | torch.any(torch.norm(self.contact_forces[:, self.shoulder_indices, :], dim=2) > 1., dim=1)
+        reset = reset | torch.any(torch.norm(self.contact_forces[:, self.knee_indices, :], dim=2) > 1., dim=1)
+        time_out = self.progress_buf >= self.max_episode_length - 1  # no terminal reward for time-outs
+        reset = reset | time_out
+
+        self.rew_buf[:] = total_reward
+        self.reset_buf[:] = reset
+
+    # def compute_reward(self, actions):
+    #     self.rew_buf[:], self.reset_buf[:] = compute_bolt_reward(
+    #         # tensors
+    #         self.root_states,
+    #         self.commands,
+    #         self.torques,
+    #         self.contact_forces,
+    #         self.shoulder_indices,
+    #         self.knee_indices,
+    #         self.progress_buf,
+    #         # Dict
+    #         self.rew_scales,
+    #         # other
+    #         self.base_index,
+    #         self.max_episode_length,
+    #         self.foot_positions, 
+    #         self.foot_velocities,
+    #         self.feet_indices,
+    #     )
 
     def compute_observations(self):
         self.gym.refresh_dof_state_tensor(self.sim)  # done in step

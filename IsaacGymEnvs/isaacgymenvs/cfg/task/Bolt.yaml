@@ -3,6 +3,10 @@ name: Bolt
 
 physics_engine: ${..physics_engine}
 
+wandb:
+  log_metrics: True
+  root_log_dir: './eval_summaries'
+
 env:
   numEnvs: ${resolve_default:2,${...num_envs}} #4096
   envSpacing: 4.  # [m]
