@@ -169,7 +169,7 @@ def launch_rlg_hydra(cfg: DictConfig):
     rlg_config_dict = omegaconf_to_dict(cfg.train)
     rlg_config_dict = preprocess_train_config(cfg, rlg_config_dict)
 
-    experiment_dir = os.path.join('./runs', cfg.train.params.config.name + time_str)
+    experiment_dir = os.path.join('./runs', f"{cfg.train.params.config.name}_{time_str}")
 
     observers = [RLGPUAlgoObserver()]
 
