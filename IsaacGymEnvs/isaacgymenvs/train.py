@@ -33,6 +33,7 @@ import hydra
 
 from omegaconf import DictConfig, OmegaConf
 from omegaconf import DictConfig, OmegaConf
+import os
 
 
 def preprocess_train_config(cfg, config_dict):
@@ -169,17 +170,21 @@ def launch_rlg_hydra(cfg: DictConfig):
     rlg_config_dict = omegaconf_to_dict(cfg.train)
     rlg_config_dict = preprocess_train_config(cfg, rlg_config_dict)
 
+    experiment_dir = os.path.join('runs', cfg.train.params.config.name + 
+            '_{date:%Y-%m-%d_%H-%M}'.format(date=datetime.now()))
+
     observers = [RLGPUAlgoObserver()]
 
     if cfg.pbt.enabled:
         pbt_observer = PbtAlgoObserver(cfg)
         observers.append(pbt_observer)
 
+
     if cfg.wandb_activate:
         cfg.seed += global_rank
         if global_rank == 0:
             # initialize wandb only once per multi-gpu run
-            wandb_observer = WandbAlgoObserver(cfg)
+            wandb_observer = WandbAlgoObserver(cfg, experiment_dir)
             observers.append(wandb_observer)
 
     # register new AMP network builder and agent
@@ -200,9 +205,6 @@ def launch_rlg_hydra(cfg: DictConfig):
 
     # dump config dict
     if not cfg.test:
-        experiment_dir = os.path.join('runs', cfg.train.params.config.name + 
-        '_{date:%Y-%m-%d_%H-%M}'.format(date=datetime.now()))
-
         os.makedirs(experiment_dir, exist_ok=True)
         with open(os.path.join(experiment_dir, 'config.yaml'), 'w') as f:
             f.write(OmegaConf.to_yaml(cfg))
@@ -213,6 +215,9 @@ def launch_rlg_hydra(cfg: DictConfig):
         'checkpoint': cfg.checkpoint,
         'sigma': cfg.sigma if cfg.sigma != '' else None
     })
+
+    if uses_wandb:
+        wandb_observer.log_model_to_wandb(cfg.train.params.config.name)
 
 
 if __name__ == "__main__":

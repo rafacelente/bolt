@@ -149,13 +149,17 @@ class Bolt(VecTask):
             self.default_dof_pos[:, i] = angle
 
         # initialize some data used later on
-        self.extras = {}
         self.initial_root_states = self.root_states.clone()
         self.initial_root_states[:] = to_torch(self.base_init_state, device=self.device, requires_grad=False)
         self.gravity_vec = to_torch(get_axis_params(-1., self.up_axis_idx), device=self.device).repeat((self.num_envs, 1))
         self.actions = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device, requires_grad=False)
         
         
+        # IMPORTANT: By default (and unchangable), rl_games steps returns the following names:
+        # self.self.obs_dict, self.rew_buf, self.reset_buf, self.extras (you may check on the VecTask class, step method)
+        # These extras are used by the Observers (here they call it info... god knows why) to compute metrics
+        # So, if you want to access the Observers (such as wandb/rlgpu observer), you must add them to the self.extras dict
+        self.extras = {}
         reward_keys = [
             "air_time",
             "clearance",
@@ -170,11 +174,7 @@ class Bolt(VecTask):
             key: torch.zeros(self.num_envs, dtype=torch.float, device=self.device, requires_grad=False) for key in reward_keys
         }
 
-
-        self.episode_buffer_count = 0
-        self.mean_rewards_64 = {
-            key: torch.zeros(1, dtype=torch.float, device=self.device, requires_grad=False) for key in reward_keys
-        }
+        self.extras["episode_cumulative"] = self.rewards_episode
 
         # logging and metrics
         self.metrics_writer = None
@@ -330,24 +330,8 @@ class Bolt(VecTask):
         
         # penalties from anymal_terrain.py
 
-        all_rewads = [
-            (rew_air_time, "air_time"),
-            (rew_clearance, "clearance"),
-            (rew_balance, "balance"),
-            (rew_slip, "slip"),
-            (rew_torque, "torque"),
-            (rew_ang_vel_z, "ang_vel_z"),
-            (rew_lin_vel_xy, "lin_vel_xy"),
-        ]
-
-
         total_reward = rew_lin_vel_xy + rew_ang_vel_z + rew_torque + rew_balance + rew_slip + rew_clearance + rew_air_time
         total_reward = torch.clip(total_reward, 0., None)
-
-        # log metrics
-        for rew, name in all_rewads:
-            self.rewards_episode[name] += rew
-        self.rewards_episode["total_reward"] += total_reward
 
         # reset agents
         reset = torch.norm(self.contact_forces[:, self.base_index, :], dim=1) > 1.
@@ -355,6 +339,25 @@ class Bolt(VecTask):
         reset = reset | torch.any(torch.norm(self.contact_forces[:, self.knee_indices, :], dim=2) > 1., dim=1)
         time_out = self.progress_buf >= self.max_episode_length - 1  # no terminal reward for time-outs
         reset = reset | time_out
+
+        # log metrics
+        all_rewards = [
+            (rew_air_time, "air_time"),
+            (rew_clearance, "clearance"),
+            (rew_balance, "balance"),
+            (rew_slip, "slip"),
+            (rew_torque, "torque"),
+            (rew_ang_vel_z, "ang_vel_z"),
+            (rew_lin_vel_xy, "lin_vel_xy"),
+            (total_reward, "total_reward"),
+        ]
+
+        episode_cumulative = dict()
+        for rew, name in all_rewards:
+            self.rewards_episode[name] += rew
+            episode_cumulative[name] = rew
+        self.extras["rewards_episode"] = self.rewards_episode
+        self.extras["episode_cumulative"] += episode_cumulative
 
         self.rew_buf[:] = total_reward
         self.reset_buf[:] = reset

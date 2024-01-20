@@ -49,6 +49,7 @@ wandb_project: 'bolt'
 wandb_tags: []
 wandb_logcode_dir: '' 
 wandb_logdir : './logs'
+wandb_log_model: True
 
 capture_video: True # Make sure pyvirtualdisplay is installed
 capture_video_freq: 2000
