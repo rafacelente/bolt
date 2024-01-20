@@ -3,6 +3,7 @@ venv
 *pyc
 IsaacGymEnvs/test
 IsaacGymEnvs/isaacgymenvs/runs/*
+IsaacGymEnvs/isaacgymenvs.egg-info/
 **/__pycache__/*
 **/wandb/
 **/videos/

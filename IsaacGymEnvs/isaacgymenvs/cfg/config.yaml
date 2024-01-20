@@ -51,7 +51,7 @@ wandb_logcode_dir: ''
 wandb_logdir : './logs'
 wandb_log_model: True
 
-capture_video: True # Make sure pyvirtualdisplay is installed
+capture_video: False # Make sure pyvirtualdisplay is installed
 capture_video_freq: 2000
 capture_video_len: 100
 force_render: True

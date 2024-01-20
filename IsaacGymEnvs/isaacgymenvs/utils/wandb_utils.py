@@ -26,7 +26,7 @@ class WandbAlgoObserver(AlgoObserver):
     def log_model_to_wandb(self, name):
         if self.log_model:
             print('Logging model to wandb...')
-            best_model_path = os.path.join(self.local_run_dir, f'{name}.pth')
+            best_model_path = os.path.join(self.local_run_dir, f'nn/{name}.pth')
             best_model = wandb.Artifact(f"model_{self.run_id}", type='model')
             best_model.add_file(best_model_path)
             wandb.run.log_artifact(best_model)
@@ -38,8 +38,7 @@ class WandbAlgoObserver(AlgoObserver):
         sync_tensorboard does not work.
         """
 
-        self.run_id = self.cfg.get('run_id', None)
-        self.log_model = self.cfg.get('log_model', False)
+        self.log_model = self.cfg.get('wandb_log_model', False)
 
         wandb_unique_id = f"{experiment_name}"
         self.run_id = None

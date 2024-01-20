@@ -348,7 +348,7 @@ class Bolt(VecTask):
             self.rewards_episode[name] += rew
             episode_cumulative[name] = rew
         self.extras["rewards_episode"] = self.rewards_episode
-        self.extras["episode_cumulative"] += episode_cumulative
+        self.extras["episode_cumulative"] = episode_cumulative
 
         self.rew_buf[:] = total_reward
         self.reset_buf[:] = reset
