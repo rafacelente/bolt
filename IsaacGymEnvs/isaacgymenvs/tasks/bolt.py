@@ -176,15 +176,6 @@ class Bolt(VecTask):
 
         self.extras["episode_cumulative"] = self.rewards_episode
 
-        # logging and metrics
-        self.metrics_writer = None
-        wandb_status= self.cfg.get('wandb', None)
-        if wandb_status is not None:
-            log_metrics = wandb_status.get('log_metrics', False)
-            if log_metrics:
-                import tensorboardX
-                self.metrics_writer = tensorboardX.SummaryWriter(log_dir=self.cfg["wandb"]["root_log_dir"])
-
         self.reset_idx(torch.arange(self.num_envs, device=self.device))
 
     def create_sim(self):
@@ -431,23 +422,6 @@ class Bolt(VecTask):
 
         self.progress_buf[env_ids] = 0
         self.reset_buf[env_ids] = 1
-
-        if self.metrics_writer is not None:
-            if env_ids.numel() > 0:
-                self.episode_buffer_count += env_ids.numel()
-                for name, values in self.rewards_episode.items():
-                        self.mean_rewards_64[name] = values[env_ids].sum()
-                
-                if self.episode_buffer_count >= 64:
-                    wandb_dict = {key: value / self.episode_buffer_count for key, value in self.mean_rewards_64.items()}
-                    wandb.log(wandb_dict)
-                    self.mean_rewards_64 = {
-                        key: torch.zeros(1, dtype=torch.float, device=self.device, requires_grad=False) for key in self.rewards_episode.keys()
-                    }
-                    self.episode_buffer_count = 0
-                    self.rewards_episode = {
-                        key: torch.zeros(self.num_envs, dtype=torch.float, device=self.device, requires_grad=False) for key in self.rewards_episode.keys()
-                    }
 
         for key in self.rewards_episode.keys():
             self.rewards_episode[key][env_ids] = 0.
