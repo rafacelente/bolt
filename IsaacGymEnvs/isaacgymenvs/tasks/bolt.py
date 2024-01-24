@@ -264,6 +264,7 @@ class Bolt(VecTask):
 
     def pre_physics_step(self, actions):
         self.actions = actions.clone().to(self.device)
+        # TODO: Is action_scale necessary? It's default to 0.5 in the config file
         targets = self.action_scale * self.actions + self.default_dof_pos
         self.gym.set_dof_position_target_tensor(self.sim, gymtorch.unwrap_tensor(targets))
 
