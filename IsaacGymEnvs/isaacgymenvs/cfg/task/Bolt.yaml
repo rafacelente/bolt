@@ -5,7 +5,7 @@ physics_engine: ${..physics_engine}
 
 env:
   numEnvs: ${resolve_default:2,${...num_envs}} #4096
-  envSpacing: 4.  # [m]
+  envSpacing: 2.  # [m]
 
   clipObservations: 5.0
   clipActions: 1.0
@@ -22,9 +22,9 @@ env:
     vAngular: [0.0, 0.0, 0.0]  # x,y,z [rad/s]
 
   randomCommandVelocityRanges:
-    linear_x: [-1., 1.] #[1., 1.] # min max [m/s]
-    linear_y: [-1., 1.] #[0., 0.]   # min max [m/s]
-    yaw: [0., 0.2]          # min max [rad/s]
+    linear_x: [1., 1.] #[-1., 1.] # min max [m/s]
+    linear_y:  [0., 0.] # [-1., 1.]   # min max [m/s]
+    yaw: [0., 0.]          # min max [rad/s]
 
   control:
     # PD Drive parameters:
@@ -48,20 +48,20 @@ env:
 
   learn:
     # rewards
-    linearVelocityXYRewardScale: 6.0
-    angularVelocityZRewardScale: 0.5
-    torqueRewardScale: -0.025
-    slipRewardScale : -0.1
+    linearVelocityXYRewardScale: 5.0
+    angularVelocityZRewardScale: 2.0
+    torqueRewardScale: -0.05
+    slipRewardScale : -0.3
     balanceRewardScale : -0.025
     maxFootHeightReward : 0.25
-    clearanceRewardScale : -20.0
+    clearanceRewardScale : -5.0
 
 
     # normalization
     linearVelocityScale: 1.0 #2.0
     angularVelocityScale: 1.0 #0.25
     dofPositionScale: 1.0
-    dofVelocityScale: 1.0 #0.05
+    dofVelocityScale: 0.05
 
     # episode length in seconds
     episodeLength_s: 50
