@@ -22,14 +22,14 @@ env:
     vAngular: [0.0, 0.0, 0.0]  # x,y,z [rad/s]
 
   randomCommandVelocityRanges:
-    linear_x: [1., 1.] #[-1., 1.] # min max [m/s]
-    linear_y:  [0., 0.] # [-1., 1.]   # min max [m/s]
-    yaw: [0., 0.]          # min max [rad/s]
+    linear_x: [0., 1.] #[-1., 1.] # min max [m/s]
+    linear_y:  [-1., 1.] # [-1., 1.]   # min max [m/s]
+    yaw: [-0.1, 0.1]          # min max [rad/s]
 
   control:
     # PD Drive parameters:
-    stiffness: 5.0  # [N*m/rad]
-    damping: 0.1     # [N*m*s/rad]
+    stiffness: 85.0  # [N*m/rad]
+    damping: 2     # [N*m*s/rad]
     actionScale: 0.5
     controlFrequencyInv: 1 # 60 Hz
 
