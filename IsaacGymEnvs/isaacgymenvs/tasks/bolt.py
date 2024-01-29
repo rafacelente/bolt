@@ -130,7 +130,7 @@ class Bolt(VecTask):
         self.dof_state = gymtorch.wrap_tensor(dof_state_tensor)
         self.dof_pos = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 0]
         self.dof_vel = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 1]
-        self.last_dof_vel = torch.zeros(self.dof_vel)
+        self.last_dof_vel = torch.zeros_like(self.dof_vel)
         self.contact_forces = gymtorch.wrap_tensor(net_contact_forces).view(self.num_envs, -1, 3)  # shape: num_envs, num_bodies, xyz axis
         self.torques = gymtorch.wrap_tensor(torques).view(self.num_envs, self.num_dof)
         self.rigid_body_state = gymtorch.wrap_tensor(rigid_body_state)
