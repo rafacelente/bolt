@@ -61,7 +61,7 @@ class Bolt(VecTask):
         self.rew_scales["slip"] = self.cfg["env"]["learn"]["slipRewardScale"]
         self.rew_scales["balance"] = self.cfg["env"]["learn"]["balanceRewardScale"]
         self.rew_scales["maxHeight"] = self.cfg["env"]["learn"]["maxFootHeightReward"]
-        self.rew_scales["clearance"] = self.cfg["env"]["learn"]["clearanceRewardScale"]
+        #self.rew_scales["clearance"] = self.cfg["env"]["learn"]["clearanceRewardScale"]
         self.rew_scales["acc"] = self.cfg["env"]["learn"]["accelerationRewardScale"]
 
         # randomization
@@ -162,7 +162,7 @@ class Bolt(VecTask):
         self.extras = {}
         reward_keys = [
             "air_time",
-            "clearance",
+            #"clearance",
             "balance",
             "slip",
             "torque",
@@ -276,11 +276,11 @@ class Bolt(VecTask):
         if len(env_ids) > 0:
             self.reset_idx(env_ids)
 
-        self.compute_observations()
-
         self.last_dof_vel[:] = self.dof_vel[:]
         self.foot_positions = self.rigid_body_state.view(self.num_envs, self.num_bodies, 13)[:, self.feet_indices, 0:3]
         self.foot_velocities = self.rigid_body_state.view(self.num_envs, self.num_bodies, 13)[:, self.feet_indices, 7:10]
+        self.compute_observations()
+
         # self.compute_reward(self.actions)
         self.compute_bolt_reward(self.actions)
 
@@ -307,7 +307,7 @@ class Bolt(VecTask):
         rew_balance = torch.sum(torch.square(base_ang_vel[:, :2]), dim=1) * self.rew_scales["balance"]
 
         # foot clearance penalty (solo 12 article)
-        rew_clearance = torch.sum(torch.square(self.foot_positions[:, :, 2] - self.rew_scales["maxHeight"]) * torch.sqrt(torch.norm(self.foot_velocities[:, :, :2], dim = 2)), dim = 1) * self.rew_scales["clearance"]
+        #rew_clearance = torch.sum(torch.square(self.foot_positions[:, :, 2] - self.rew_scales["maxHeight"]) * torch.sqrt(torch.norm(self.foot_velocities[:, :, :2], dim = 2)), dim = 1) * self.rew_scales["clearance"]
 
         # joint acc penalty
         rew_acc = torch.sum(torch.square(self.dof_vel - self.last_dof_vel), dim=1) * self.rew_scales["acc"]
@@ -327,7 +327,7 @@ class Bolt(VecTask):
         
         # penalties from anymal_terrain.py
 
-        total_reward = rew_lin_vel_xy + rew_ang_vel_z + rew_torque + rew_balance + rew_slip + rew_clearance + rew_acc +  rew_air_time
+        total_reward = rew_lin_vel_xy + rew_ang_vel_z + rew_torque + rew_balance + rew_slip + rew_acc +  rew_air_time # + rew_clereance
         total_reward = torch.clip(total_reward, 0., None)
 
         # reset agents
@@ -340,7 +340,7 @@ class Bolt(VecTask):
         # log metrics
         all_rewards = [
             (rew_air_time, "air_time"),
-            (rew_clearance, "clearance"),
+            #(rew_clearance, "clearance"),
             (rew_balance, "balance"),
             (rew_slip, "slip"),
             (rew_torque, "torque"),
