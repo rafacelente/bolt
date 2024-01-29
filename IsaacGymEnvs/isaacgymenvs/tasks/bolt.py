@@ -62,7 +62,7 @@ class Bolt(VecTask):
         self.rew_scales["balance"] = self.cfg["env"]["learn"]["balanceRewardScale"]
         self.rew_scales["maxHeight"] = self.cfg["env"]["learn"]["maxFootHeightReward"]
         self.rew_scales["clearance"] = self.cfg["env"]["learn"]["clearanceRewardScale"]
-
+        self.rew_scales["acc"] = self.cfg["env"]["learn"]["accelerationRewardScale"]
 
         # randomization
         self.randomization_params = self.cfg["task"]["randomization_params"]
