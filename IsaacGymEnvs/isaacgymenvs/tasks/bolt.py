@@ -130,6 +130,7 @@ class Bolt(VecTask):
         self.dof_state = gymtorch.wrap_tensor(dof_state_tensor)
         self.dof_pos = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 0]
         self.dof_vel = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 1]
+        self.last_dof_vel = torch.zeros(self.dof_vel)
         self.contact_forces = gymtorch.wrap_tensor(net_contact_forces).view(self.num_envs, -1, 3)  # shape: num_envs, num_bodies, xyz axis
         self.torques = gymtorch.wrap_tensor(torques).view(self.num_envs, self.num_dof)
         self.rigid_body_state = gymtorch.wrap_tensor(rigid_body_state)
@@ -154,7 +155,6 @@ class Bolt(VecTask):
         self.gravity_vec = to_torch(get_axis_params(-1., self.up_axis_idx), device=self.device).repeat((self.num_envs, 1))
         self.actions = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device, requires_grad=False)
         
-        
         # IMPORTANT: By default (and unchangable), rl_games steps returns the following names:
         # self.self.obs_dict, self.rew_buf, self.reset_buf, self.extras (you may check on the VecTask class, step method)
         # These extras are used by the Observers (here they call it info... god knows why) to compute metrics
@@ -168,6 +168,7 @@ class Bolt(VecTask):
             "torque",
             "ang_vel_z",
             "lin_vel_xy",
+            "acc",
             "total_reward"
         ]
         self.rewards_episode = {
@@ -277,6 +278,7 @@ class Bolt(VecTask):
 
         self.compute_observations()
 
+        self.last_dof_vel[:] = self.dof_vel[:]
         self.foot_positions = self.rigid_body_state.view(self.num_envs, self.num_bodies, 13)[:, self.feet_indices, 0:3]
         self.foot_velocities = self.rigid_body_state.view(self.num_envs, self.num_bodies, 13)[:, self.feet_indices, 7:10]
         # self.compute_reward(self.actions)
@@ -307,6 +309,9 @@ class Bolt(VecTask):
         # foot clearance penalty (solo 12 article)
         rew_clearance = torch.sum(torch.square(self.foot_positions[:, :, 2] - self.rew_scales["maxHeight"]) * torch.sqrt(torch.norm(self.foot_velocities[:, :, :2], dim = 2)), dim = 1) * self.rew_scales["clearance"]
 
+        # joint acc penalty
+        rew_acc = torch.sum(torch.square(self.dof_vel - self.last_dof_vel), dim=1) * self.rew_scales["acc"]
+
         # bipedal stability penalty (thx to the gravity vector at the center of mass)
         #rew_stability = 
 
@@ -322,7 +327,7 @@ class Bolt(VecTask):
         
         # penalties from anymal_terrain.py
 
-        total_reward = rew_lin_vel_xy + rew_ang_vel_z + rew_torque + rew_balance + rew_slip + rew_clearance + rew_air_time
+        total_reward = rew_lin_vel_xy + rew_ang_vel_z + rew_torque + rew_balance + rew_slip + rew_clearance + rew_acc +  rew_air_time
         total_reward = torch.clip(total_reward, 0., None)
 
         # reset agents
@@ -341,6 +346,7 @@ class Bolt(VecTask):
             (rew_torque, "torque"),
             (rew_ang_vel_z, "ang_vel_z"),
             (rew_lin_vel_xy, "lin_vel_xy"),
+            (rew_acc, "acc"),
             (total_reward, "total_reward"),
         ]
 
@@ -422,6 +428,7 @@ class Bolt(VecTask):
         self.commands_yaw[env_ids] = torch_rand_float(self.command_yaw_range[0], self.command_yaw_range[1], (len(env_ids), 1), device=self.device).squeeze()
 
         self.progress_buf[env_ids] = 0
+        self.last_dof_vel[env_ids] = 0.
         self.reset_buf[env_ids] = 1
 
         for key in self.rewards_episode.keys():

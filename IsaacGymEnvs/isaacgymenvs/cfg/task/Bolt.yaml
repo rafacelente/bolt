@@ -55,6 +55,7 @@ env:
     balanceRewardScale : -0.025
     maxFootHeightReward : 0.25
     clearanceRewardScale : -5.0
+    accelerationRewardScale : -0.1
 
 
     # normalization
