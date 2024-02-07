@@ -10,3 +10,5 @@ IsaacGymEnvs/isaacgymenvs.egg-info/
 *.ipynb_checkpoints
 **/eval_summaries
 **/__pycache__/
+launch_simulations.py
+runs/*

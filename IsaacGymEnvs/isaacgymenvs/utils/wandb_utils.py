@@ -31,6 +31,12 @@ class WandbAlgoObserver(AlgoObserver):
             best_model.add_file(best_model_path)
             wandb.run.log_artifact(best_model)
 
+            # # Logging video
+            # run_name = os.path.basename(self.local_run_dir)
+            # video_path = os.path.join("/home/odri/git/pie2023/IsaacGymEnvs/isaacgymenvs/videos", os.path.join(run_name, "rl-video-step-2000.mp4"))
+            # run_video = wandb.Artifact(f"video_{self.run_id}", type='video')
+            # run_video.add_file(video_path)
+            # wandb.run.log_artifact(run_video)
 
     def before_init(self, base_name, config, experiment_name):
         """

@@ -7,6 +7,7 @@
   <!-- This file is based on: https://atlas.is.localnet/confluence/display/AMDW/Quadruped+URDF+Files -->
   <link name="base_link">
     <!-- BASE LINK INERTIAL -->
+
     <inertial>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <mass value="0.61436936"/>
@@ -49,7 +50,7 @@
   <joint name="FL_HAA" type="revolute">
     <parent link="base_link"/>
     <child link="FL_SHOULDER"/>
-    <limit effort="1000" lower="-5" upper="5" velocity="1000"/>
+    <limit effort="1000" lower="-10" upper="10" velocity="1000"/>
     <!-- joints rotates around the x-axis -->
     <axis xyz="1 0 0"/>
     <origin rpy="0 0 0" xyz="0.0 0.0636 0"/>
@@ -126,12 +127,14 @@
     </visual>
     <!-- UPPER LEG LINK COLLISION -->
     <collision>
+      <!-- <collision_group>1</collision_group> -->
       <origin rpy="0 0 0" xyz="0 0.02 -0.112"/>
       <!-- geometry>
         <mesh filename="../meshes/stl/upper_leg_200mm_left_side.stl"/>
       </geometry -->
       <geometry>
-        <cylinder length="0.220" radius="0.028" />
+        <cylinder length="0.110" radius="0.028" />
+        <!-- <cylinder length="0.220" radius="0.028" /> -->
       </geometry>
       <material name="grey">
         <color rgba="0.8 0.8 0.8 1.0"/>
@@ -179,7 +182,8 @@
         <mesh filename="../meshes/stl/lower_leg_200mm_left_side.stl"/>
       </geometry -->
       <geometry>
-        <cylinder length="0.2" radius="0.015" />
+        <!-- <cylinder length="0.2" radius="0.015" /> -->
+        <cylinder length="0.1" radius="0.015" />
       </geometry>
       <material name="grey">
         <color rgba="0.8 0.8 0.8 1.0"/>
@@ -243,7 +247,7 @@
   <joint name="FR_HAA" type="revolute">
     <parent link="base_link"/>
     <child link="FR_SHOULDER"/>
-    <limit effort="1000" lower="-5" upper="5" velocity="1000"/>
+    <limit effort="1000" lower="-10" upper="10" velocity="1000"/>
     <!-- joints rotates around the x-axis -->
     <axis xyz="1 0 0"/>
     <origin rpy="0 0 0" xyz="0.0 -0.0636 0"/>
@@ -325,7 +329,8 @@
         <mesh filename="../meshes/stl/upper_leg_200mm_right_side.stl"/>
       </geometry -->
       <geometry>
-        <cylinder length="0.220" radius="0.028" />
+        <cylinder length="0.110" radius="0.028" />
+        <!-- <cylinder length="0.220" radius="0.028" /> -->
       </geometry>
       <material name="grey">
         <color rgba="0.8 0.8 0.8 1.0"/>
@@ -373,7 +378,9 @@
         <mesh filename="../meshes/stl/lower_leg_200mm_right_side.stl"/>
       </geometry -->
       <geometry>
-        <cylinder length="0.2" radius="0.015" />
+        <!-- <cylinder length="0.2" radius="0.015" /> -->
+        <cylinder length="0.1" radius="0.015" />
+
       </geometry>
       <material name="grey">
         <color rgba="0.8 0.8 0.8 1.0"/>

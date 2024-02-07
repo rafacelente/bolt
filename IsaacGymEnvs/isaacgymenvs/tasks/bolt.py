@@ -247,7 +247,7 @@ class Bolt(VecTask):
         for i in range(self.num_envs):
             # create env instance
             env_ptr = self.gym.create_env(self.sim, env_lower, env_upper, num_per_row)
-            bolt_handle = self.gym.create_actor(env_ptr, bolt_asset, start_pose, "bolt", i, 1, 0)
+            bolt_handle = self.gym.create_actor(env_ptr, bolt_asset, start_pose, "bolt", i, 0, 0)
             self.gym.set_actor_dof_properties(env_ptr, bolt_handle, dof_props)
             self.gym.enable_actor_dof_force_sensors(env_ptr, bolt_handle)
             self.envs.append(env_ptr)
@@ -332,8 +332,10 @@ class Bolt(VecTask):
 
         # reset agents
         reset = torch.norm(self.contact_forces[:, self.base_index, :], dim=1) > 1.
-        reset = reset | torch.any(torch.norm(self.contact_forces[:, self.shoulder_indices, :], dim=2) > 1., dim=1)
-        reset = reset | torch.any(torch.norm(self.contact_forces[:, self.knee_indices, :], dim=2) > 1., dim=1)
+        reset2 = torch.any(torch.norm(self.contact_forces[:, self.shoulder_indices, :], dim=2) > 1., dim=1)
+        reset3 = torch.any(torch.norm(self.contact_forces[:, self.knee_indices, :], dim=2) > 1., dim=1)
+
+        reset = reset | reset2 | reset3
         time_out = self.progress_buf >= self.max_episode_length - 1  # no terminal reward for time-outs
         reset = reset | time_out
 
@@ -512,7 +514,7 @@ def compute_bolt_reward(
     # reset agents
     reset = torch.norm(contact_forces[:, base_index, :], dim=1) > 1.
     reset = reset | torch.any(torch.norm(contact_forces[:, shoulder_indices, :], dim=2) > 1., dim=1)
-    reset = reset | torch.any(torch.norm(contact_forces[:, knee_indices, :], dim=2) > 1., dim=1)
+    #reset = reset | torch.any(torch.norm(contact_forces[:, knee_indices, :], dim=2) > 1., dim=1)
     time_out = episode_lengths >= max_episode_length - 1  # no terminal reward for time-outs
     reset = reset | time_out
 
