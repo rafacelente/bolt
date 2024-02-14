@@ -63,6 +63,11 @@ class Bolt(VecTask):
         self.rew_scales["maxHeight"] = self.cfg["env"]["learn"]["maxFootHeightReward"]
         #self.rew_scales["clearance"] = self.cfg["env"]["learn"]["clearanceRewardScale"]
         self.rew_scales["acc"] = self.cfg["env"]["learn"]["accelerationRewardScale"]
+        self.rew_scales["base_flat"] = self.cfg["env"]["learn"]["baseFlatRewardScale"]
+        self.rew_scales["balance_speed"] = self.cfg["env"]["learn"]["balanceSpeedRewardScale"]
+        self.rew_scales["joint_limit"] = self.cfg["env"]["learn"]["jointLimitRewardScale"]
+
+
 
         # randomization
         self.randomization_params = self.cfg["task"]["randomization_params"]
@@ -153,8 +158,10 @@ class Bolt(VecTask):
         self.initial_root_states = self.root_states.clone()
         self.initial_root_states[:] = to_torch(self.base_init_state, device=self.device, requires_grad=False)
         self.gravity_vec = to_torch(get_axis_params(-1., self.up_axis_idx), device=self.device).repeat((self.num_envs, 1))
+        self.vertical_vec = to_torch(get_axis_params(1., self.up_axis_idx), device=self.device).repeat((self.num_envs, 1))
         self.actions = torch.zeros(self.num_envs, self.num_actions, dtype=torch.float, device=self.device, requires_grad=False)
-        
+        self.noise_scale_vec = self._get_noise_scale_vec(self.cfg)
+
         # IMPORTANT: By default (and unchangable), rl_games steps returns the following names:
         # self.self.obs_dict, self.rew_buf, self.reset_buf, self.extras (you may check on the VecTask class, step method)
         # These extras are used by the Observers (here they call it info... god knows why) to compute metrics
@@ -169,6 +176,9 @@ class Bolt(VecTask):
             "ang_vel_z",
             "lin_vel_xy",
             "acc",
+            "base_flat",
+            "balance_speed",
+            "joint_limit",
             "total_reward"
         ]
         self.rewards_episode = {
@@ -188,6 +198,19 @@ class Bolt(VecTask):
         # If randomizing, apply once immediately on startup before the fist sim step
         if self.randomize:
             self.apply_randomizations(self.randomization_params)
+
+    def _get_noise_scale_vec(self, cfg):
+        noise_vec = torch.zeros_like(self.obs_buf[0])
+        self.add_noise = self.cfg["env"]["learn"]["addNoise"]
+        noise_level = self.cfg["env"]["learn"]["noiseLevel"]
+        noise_vec[:3] = self.cfg["env"]["learn"]["linearVelocityNoise"] * noise_level * self.lin_vel_scale
+        noise_vec[3:6] = self.cfg["env"]["learn"]["angularVelocityNoise"] * noise_level * self.ang_vel_scale
+        noise_vec[6:9] = self.cfg["env"]["learn"]["gravityNoise"] * noise_level
+        noise_vec[9:12] = 0. # commands
+        noise_vec[12:18] = self.cfg["env"]["learn"]["dofPositionNoise"] * noise_level * self.dof_pos_scale
+        noise_vec[18:24] = self.cfg["env"]["learn"]["dofVelocityNoise"] * noise_level * self.dof_vel_scale
+        noise_vec[24:30] = 0. # previous actions
+        return noise_vec
 
 
     def _create_ground_plane(self):
@@ -280,6 +303,8 @@ class Bolt(VecTask):
         self.foot_positions = self.rigid_body_state.view(self.num_envs, self.num_bodies, 13)[:, self.feet_indices, 0:3]
         self.foot_velocities = self.rigid_body_state.view(self.num_envs, self.num_bodies, 13)[:, self.feet_indices, 7:10]
         self.compute_observations()
+        if self.add_noise:
+            self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * self.noise_scale_vec
 
         # self.compute_reward(self.actions)
         self.compute_bolt_reward(self.actions)
@@ -324,10 +349,20 @@ class Bolt(VecTask):
         # reward for air time (solo 12 article)
         # 1/(1 + exp(-t/0.25)
         rew_air_time = 0.0025/(1 + torch.exp(-self.progress_buf/0.5)) #progress_buf == episode_lengths
+
+        # Base stay stable
+        projected_vertical = quat_rotate(base_quat, self.vertical_vec)
+        rew_base_flat = torch.square(torch.norm(projected_vertical - self.vertical_vec, dim=1)) * self.rew_scales["base_flat"]
+
+        #penalty on difference between current position and initial position
+        rew_joint_limit = torch.exp(-torch.norm(self.dof_pos - self.default_dof_pos, dim=1)) * self.rew_scales["joint_limit"]
+
+        #penalty on base's vertical speed (helps base to remain stable)
+        rew_balance_speed = torch.square(base_lin_vel[:, 2]) * self.rew_scales["balance_speed"]
         
         # penalties from anymal_terrain.py
 
-        total_reward = rew_lin_vel_xy + rew_ang_vel_z + rew_torque + rew_balance + rew_slip + rew_acc +  rew_air_time # + rew_clereance
+        total_reward = rew_lin_vel_xy + rew_ang_vel_z + rew_torque + rew_balance + rew_slip + rew_acc + rew_air_time + rew_base_flat + rew_joint_limit + rew_balance_speed # + rew_clereance
         total_reward = torch.clip(total_reward, 0., None)
 
         # reset agents
@@ -349,6 +384,9 @@ class Bolt(VecTask):
             (rew_ang_vel_z, "ang_vel_z"),
             (rew_lin_vel_xy, "lin_vel_xy"),
             (rew_acc, "acc"),
+            (rew_base_flat, "base_flat"),
+            (rew_balance_speed, "balance_speed"),
+            (rew_joint_limit, "joint_limit"),
             (total_reward, "total_reward"),
         ]
 
