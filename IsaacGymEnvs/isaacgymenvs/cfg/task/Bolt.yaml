@@ -50,15 +50,16 @@ env:
     # rewards
     linearVelocityXYRewardScale: 5.0
     angularVelocityZRewardScale: 2.0
+    balanceSpeedRewardScale : -2.0
+    balanceRotationRewardScale : -0.025
     torqueRewardScale: -0.05
+    dofAccelerationRewardScale : -0.1
     slipRewardScale : -0.3
-    balanceRewardScale : -0.025
     maxFootHeightReward : 0.25
     clearanceRewardScale : -5.0
-    accelerationRewardScale : -0.1
     baseFlatRewardScale : -5.0
     jointLimitRewardScale : 0.4
-    balanceSpeedRewardScale : -2.0
+
 
     # normalization
     linearVelocityScale: 1.0 #2.0

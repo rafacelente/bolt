@@ -57,17 +57,15 @@ class Bolt(VecTask):
         self.rew_scales = {}
         self.rew_scales["lin_vel_xy"] = self.cfg["env"]["learn"]["linearVelocityXYRewardScale"]
         self.rew_scales["ang_vel_z"] = self.cfg["env"]["learn"]["angularVelocityZRewardScale"]
-        self.rew_scales["torque"] = self.cfg["env"]["learn"]["torqueRewardScale"]
-        self.rew_scales["slip"] = self.cfg["env"]["learn"]["slipRewardScale"]
-        self.rew_scales["balance"] = self.cfg["env"]["learn"]["balanceRewardScale"]
-        self.rew_scales["maxHeight"] = self.cfg["env"]["learn"]["maxFootHeightReward"]
-        #self.rew_scales["clearance"] = self.cfg["env"]["learn"]["clearanceRewardScale"]
-        self.rew_scales["acc"] = self.cfg["env"]["learn"]["accelerationRewardScale"]
-        self.rew_scales["base_flat"] = self.cfg["env"]["learn"]["baseFlatRewardScale"]
         self.rew_scales["balance_speed"] = self.cfg["env"]["learn"]["balanceSpeedRewardScale"]
+        self.rew_scales["balance_rotation"] = self.cfg["env"]["learn"]["balanceRotationRewardScale"]
+        self.rew_scales["torque"] = self.cfg["env"]["learn"]["torqueRewardScale"]
+        self.rew_scales["dof_acc"] = self.cfg["env"]["learn"]["dofAccelerationRewardScale"]
+        self.rew_scales["slip"] = self.cfg["env"]["learn"]["slipRewardScale"]
         self.rew_scales["joint_limit"] = self.cfg["env"]["learn"]["jointLimitRewardScale"]
-
-
+        self.rew_scales["base_flat"] = self.cfg["env"]["learn"]["baseFlatRewardScale"]
+        #self.rew_scales["maxHeight"] = self.cfg["env"]["learn"]["maxFootHeightReward"]
+        #self.rew_scales["clearance"] = self.cfg["env"]["learn"]["clearanceRewardScale"]
 
         # randomization
         self.randomization_params = self.cfg["task"]["randomization_params"]
@@ -135,20 +133,20 @@ class Bolt(VecTask):
         self.dof_state = gymtorch.wrap_tensor(dof_state_tensor)
         self.dof_pos = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 0]
         self.dof_vel = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 1]
-        self.last_dof_vel = torch.zeros_like(self.dof_vel)
         self.contact_forces = gymtorch.wrap_tensor(net_contact_forces).view(self.num_envs, -1, 3)  # shape: num_envs, num_bodies, xyz axis
         self.torques = gymtorch.wrap_tensor(torques).view(self.num_envs, self.num_dof)
         self.rigid_body_state = gymtorch.wrap_tensor(rigid_body_state)
-
-        #self.foot_positions = self.rigid_body_state.view(self.num_envs, self.num_bodies, 13)[:, self.feet_indices, 0:3]
-        #self.foot_velocities = self.rigid_body_state.view(self.num_envs, self.num_bodies, 13)[:, self.feet_indices, 7:10]
+        self.last_dof_vel = torch.zeros_like(self.dof_vel)
+        self.foot_positions = self.rigid_body_state.view(self.num_envs, self.num_bodies, 13)[:, self.feet_indices, 0:3]
+        self.foot_velocities = self.rigid_body_state.view(self.num_envs, self.num_bodies, 13)[:, self.feet_indices, 7:10]
+        self.knee_positions = self.rigid_body_state.view(self.num_envs, self.num_bodies, 13)[:, self.knee_indices, 0:3]
 
         self.commands = torch.zeros(self.num_envs, 3, dtype=torch.float, device=self.device, requires_grad=False)
         self.commands_y = self.commands.view(self.num_envs, 3)[..., 1]
         self.commands_x = self.commands.view(self.num_envs, 3)[..., 0]
         self.commands_yaw = self.commands.view(self.num_envs, 3)[..., 2]
-        self.default_dof_pos = torch.zeros_like(self.dof_pos, dtype=torch.float, device=self.device, requires_grad=False)
 
+        self.default_dof_pos = torch.zeros_like(self.dof_pos, dtype=torch.float, device=self.device, requires_grad=False)
         for i in range(self.cfg["env"]["numActions"]):
             name = self.dof_names[i]
             angle = self.named_default_joint_angles[name]
@@ -168,17 +166,17 @@ class Bolt(VecTask):
         # So, if you want to access the Observers (such as wandb/rlgpu observer), you must add them to the self.extras dict
         self.extras = {}
         reward_keys = [
+            "lin_vel_xy",
+            "ang_vel_z",
+            "balance_speed",
+            "balance_rotation",
+            "torque",
+            "dof_acc",
+            "joint_limit",
+            "slip",
+            "base_flat",
             "air_time",
             #"clearance",
-            "balance",
-            "slip",
-            "torque",
-            "ang_vel_z",
-            "lin_vel_xy",
-            "acc",
-            "base_flat",
-            "balance_speed",
-            "joint_limit",
             "total_reward"
         ]
         self.rewards_episode = {
@@ -226,9 +224,9 @@ class Bolt(VecTask):
 
         asset_options = gymapi.AssetOptions()
         asset_options.default_dof_drive_mode = gymapi.DOF_MODE_NONE
-        asset_options.collapse_fixed_joints = True
+        asset_options.collapse_fixed_joints = False
         asset_options.replace_cylinder_with_capsule = True
-        asset_options.flip_visual_attachments = True
+        asset_options.flip_visual_attachments = False
         asset_options.fix_base_link = self.cfg["env"]["urdfAsset"]["fixBaseLink"]
         asset_options.density = 0.001
         asset_options.angular_damping = 0.0
@@ -249,7 +247,7 @@ class Bolt(VecTask):
         extremity_name = "LOWER_LEG" if asset_options.collapse_fixed_joints else "FOOT"
         feet_names = [s for s in body_names if extremity_name in s]
         self.feet_indices = torch.zeros(len(feet_names), dtype=torch.long, device=self.device, requires_grad=False)
-        knee_names = [s for s in body_names if "UPPER_LEG" in s]
+        knee_names = [s for s in body_names if "LOWER_LEG" in s]
         self.knee_indices = torch.zeros(len(knee_names), dtype=torch.long, device=self.device, requires_grad=False)
         shoulder_names = [s for s in body_names if "SHOULDER" in s]
         self.shoulder_indices = torch.zeros(len(shoulder_names), dtype=torch.long, device=self.device, requires_grad=False)
@@ -302,6 +300,7 @@ class Bolt(VecTask):
         self.last_dof_vel[:] = self.dof_vel[:]
         self.foot_positions = self.rigid_body_state.view(self.num_envs, self.num_bodies, 13)[:, self.feet_indices, 0:3]
         self.foot_velocities = self.rigid_body_state.view(self.num_envs, self.num_bodies, 13)[:, self.feet_indices, 7:10]
+        self.knee_positions = self.rigid_body_state.view(self.num_envs, self.num_bodies, 13)[:, self.knee_indices, 0:3]
         self.compute_observations()
         if self.add_noise:
             self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * self.noise_scale_vec
@@ -315,30 +314,29 @@ class Bolt(VecTask):
         base_lin_vel = quat_rotate_inverse(base_quat, self.root_states[:, 7:10])
         base_ang_vel = quat_rotate_inverse(base_quat, self.root_states[:, 10:13])
 
-        # velocity tracking reward
+        # Velocity tracking reward
         lin_vel_error = torch.sum(torch.square(self.commands[:, :2] - base_lin_vel[:, :2]), dim=1)
         ang_vel_error = torch.square(self.commands[:, 2] - base_ang_vel[:, 2])
         rew_lin_vel_xy = torch.exp(-lin_vel_error/0.25) * self.rew_scales["lin_vel_xy"]
         rew_ang_vel_z = torch.exp(-ang_vel_error/0.25) * self.rew_scales["ang_vel_z"]
+
+        # Keep balance
+        rew_balance_speed = torch.square(base_lin_vel[:, 2]) * self.rew_scales["balance_speed"]
+        rew_balance_rotation = torch.sum(torch.square(base_ang_vel[:, :2]), dim=1) * self.rew_scales["balance_rotation"]
         
-        # torque penalty
+        # Smooth motion rewards
         rew_torque = torch.sum(torch.square(self.torques), dim=1) * self.rew_scales["torque"]
+        rew_dof_acc = torch.sum(torch.square(self.dof_vel - self.last_dof_vel), dim=1) * self.rew_scales["dof_acc"]
+
+        # Penalty on difference between current position and initial position
+        rew_joint_limit = torch.exp(-torch.norm(self.dof_pos - self.default_dof_pos, dim=1)) * self.rew_scales["joint_limit"]
 
         # foot slip penalty (solo 12 article)
         contact = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=2) > 1
         rew_slip = torch.sum(contact * torch.square(torch.norm(self.foot_velocities[:, :, :2], dim = 2)), dim = 1) * self.rew_scales["slip"]
 
-        #keep balance r = -0.015*(vitesse_rot_base_x²+vitesse_rot_base_y²)
-        rew_balance = torch.sum(torch.square(base_ang_vel[:, :2]), dim=1) * self.rew_scales["balance"]
-
         # foot clearance penalty (solo 12 article)
         #rew_clearance = torch.sum(torch.square(self.foot_positions[:, :, 2] - self.rew_scales["maxHeight"]) * torch.sqrt(torch.norm(self.foot_velocities[:, :, :2], dim = 2)), dim = 1) * self.rew_scales["clearance"]
-
-        # joint acc penalty
-        rew_acc = torch.sum(torch.square(self.dof_vel - self.last_dof_vel), dim=1) * self.rew_scales["acc"]
-
-        # bipedal stability penalty (thx to the gravity vector at the center of mass)
-        #rew_stability = 
 
         # power loss penalty (solo 12 article)
         #rew_power_loss = torch.sum() * rew_scales["power_loss"]
@@ -354,39 +352,30 @@ class Bolt(VecTask):
         projected_vertical = quat_rotate(base_quat, self.vertical_vec)
         rew_base_flat = torch.square(torch.norm(projected_vertical - self.vertical_vec, dim=1)) * self.rew_scales["base_flat"]
 
-        #penalty on difference between current position and initial position
-        rew_joint_limit = torch.exp(-torch.norm(self.dof_pos - self.default_dof_pos, dim=1)) * self.rew_scales["joint_limit"]
-
-        #penalty on base's vertical speed (helps base to remain stable)
-        rew_balance_speed = torch.square(base_lin_vel[:, 2]) * self.rew_scales["balance_speed"]
-        
-        # penalties from anymal_terrain.py
-
-        total_reward = rew_lin_vel_xy + rew_ang_vel_z + rew_torque + rew_balance + rew_slip + rew_acc + rew_air_time + rew_base_flat + rew_joint_limit + rew_balance_speed # + rew_clereance
+        total_reward = rew_lin_vel_xy + rew_ang_vel_z + rew_balance_speed + rew_balance_rotation + rew_torque + rew_dof_acc + rew_joint_limit + rew_slip # + rew_air_time + rew_base_flat + rew_clereance
         total_reward = torch.clip(total_reward, 0., None)
 
         # reset agents
-        reset = torch.norm(self.contact_forces[:, self.base_index, :], dim=1) > 1.
+        # reset_kneeling = torch.any(self.knee_positions[:, :, 2] - self.foot_positions[:, :, 2] < 0.1, dim=1)
+        reset1 = torch.norm(self.contact_forces[:, self.base_index, :], dim=1) > 1.
         reset2 = torch.any(torch.norm(self.contact_forces[:, self.shoulder_indices, :], dim=2) > 1., dim=1)
         reset3 = torch.any(torch.norm(self.contact_forces[:, self.knee_indices, :], dim=2) > 1., dim=1)
-
-        reset = reset | reset2 | reset3
         time_out = self.progress_buf >= self.max_episode_length - 1  # no terminal reward for time-outs
-        reset = reset | time_out
+        reset = reset1 | reset2 | reset3 | time_out
 
         # log metrics
         all_rewards = [
-            (rew_air_time, "air_time"),
-            #(rew_clearance, "clearance"),
-            (rew_balance, "balance"),
-            (rew_slip, "slip"),
-            (rew_torque, "torque"),
             (rew_ang_vel_z, "ang_vel_z"),
             (rew_lin_vel_xy, "lin_vel_xy"),
-            (rew_acc, "acc"),
-            (rew_base_flat, "base_flat"),
             (rew_balance_speed, "balance_speed"),
+            (rew_balance_rotation, "balance_rotation"),
+            (rew_torque, "torque"),
+            (rew_dof_acc, "dof_acc"),
             (rew_joint_limit, "joint_limit"),
+            (rew_slip, "slip"),
+            (rew_base_flat, "base_flat"),
+            (rew_air_time, "air_time"),
+            #(rew_clearance, "clearance"),
             (total_reward, "total_reward"),
         ]
 
@@ -526,7 +515,7 @@ def compute_bolt_reward(
     rew_slip = torch.sum(contact * torch.square(torch.norm(foot_velocities[:, :, :2], dim = 2)), dim = 1) * rew_scales["slip"]
 
     #keep balance r = -0.015*(vitesse_rot_base_x²+vitesse_rot_base_y²)
-    rew_balance = torch.sum(torch.square(base_ang_vel[:, :2]), dim=1) * rew_scales["balance"]
+    rew_balance = torch.sum(torch.square(base_ang_vel[:, :2]), dim=1) * rew_scales["balance_rotation"]
 
     # foot clearance penalty (solo 12 article)
     rew_clearance = torch.sum(torch.square(foot_positions[:, :, 2] - rew_scales["maxHeight"]) * torch.sqrt(torch.norm(foot_velocities[:, :, :2], dim = 2)), dim = 1) * rew_scales["clearance"]

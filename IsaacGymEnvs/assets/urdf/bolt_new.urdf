@@ -16,7 +16,7 @@
     </inertial>
     <!-- BASE LINK VISUAL -->
     <visual>
-      <origin rpy="-1.57079632679 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/stl/bolt_body.stl"/>
       </geometry>
@@ -74,7 +74,7 @@
     </inertial>
     <!-- HIP LEG LINK VISUAL -->
     <visual>
-      <origin rpy="-1.57079632679 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/stl/bolt_hip_fe_left_side.stl"/>
       </geometry>
@@ -117,7 +117,7 @@
     </inertial>
     <!-- UPPER LEG LINK VISUAL -->
     <visual>
-      <origin rpy="-1.57079632679 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/stl/upper_leg_200mm_left_side.stl"/>
       </geometry>
@@ -167,7 +167,7 @@
     </inertial>
     <!-- LOWER LEG LINK VISUAL -->
     <visual>
-      <origin rpy="-1.57079632679 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/stl/lower_leg_200mm_left_side.stl"/>
       </geometry>
@@ -216,7 +216,7 @@
     </inertial>
     <!-- FOOT VISUAL -->
     <visual>
-      <origin rpy="-1.57079632679 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/stl/bolt_foot.stl"/>
       </geometry>
@@ -271,7 +271,7 @@
     </inertial>
     <!-- HIP LEG LINK VISUAL -->
     <visual>
-      <origin rpy="-1.57079632679 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/stl/bolt_hip_fe_right_side.stl"/>
       </geometry>
@@ -314,7 +314,7 @@
     </inertial>
     <!-- UPPER LEG LINK VISUAL -->
     <visual>
-      <origin rpy="-1.57079632679 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/stl/upper_leg_200mm_right_side.stl"/>
       </geometry>
@@ -363,7 +363,7 @@
     </inertial>
     <!-- LOWER LEG LINK VISUAL -->
     <visual>
-      <origin rpy="-1.57079632679 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/stl/lower_leg_200mm_right_side.stl"/>
       </geometry>
@@ -413,7 +413,7 @@
     </inertial>
     <!-- FOOT VISUAL -->
     <visual>
-      <origin rpy="-1.57079632679 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
         <mesh filename="../meshes/stl/bolt_foot.stl"/>
       </geometry>
