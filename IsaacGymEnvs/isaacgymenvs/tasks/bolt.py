@@ -352,7 +352,7 @@ class Bolt(VecTask):
         projected_vertical = quat_rotate(base_quat, self.vertical_vec)
         rew_base_flat = torch.square(torch.norm(projected_vertical - self.vertical_vec, dim=1)) * self.rew_scales["base_flat"]
 
-        total_reward = rew_lin_vel_xy + rew_ang_vel_z + rew_balance_speed + rew_balance_rotation + rew_torque + rew_dof_acc + rew_joint_limit + rew_slip # + rew_air_time + rew_base_flat + rew_clereance
+        total_reward = rew_lin_vel_xy + rew_ang_vel_z + rew_balance_speed + rew_balance_rotation + rew_torque + rew_dof_acc + rew_joint_limit + rew_slip + rew_air_time + rew_base_flat #+ rew_clereance
         total_reward = torch.clip(total_reward, 0., None)
 
         # reset agents
