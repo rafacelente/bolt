@@ -54,7 +54,7 @@ env:
     balanceRotationRewardScale: -0.015
     torqueRewardScale: -0.05
     dofVelocityRewardScale: -0.0002
-    dofAccelerationRewardScale : -0.0000004 
+    dofAccelerationRewardScale : -0.0000002 
     actionChangeRewardScale: -0.01
     jointLimitRewardScale: 0.4
     slipRewardScale: -0.3
