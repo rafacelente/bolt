@@ -48,18 +48,19 @@ env:
 
   learn:
     # rewards
-    linearVelocityXYRewardScale: 5.0
-    angularVelocityZRewardScale: 2.0
-    balanceSpeedRewardScale : -2.0
-    balanceRotationRewardScale : -0.025
+    linearVelocityXYRewardScale: 2.0 #5.0
+    angularVelocityZRewardScale: 1.0
+    balanceSpeedRewardScale: -2.0
+    balanceRotationRewardScale: -0.015
     torqueRewardScale: -0.05
-    dofAccelerationRewardScale : -0.1
-    slipRewardScale : -0.3
-    maxFootHeightReward : 0.25
-    clearanceRewardScale : -5.0
-    baseFlatRewardScale : -5.0
-    jointLimitRewardScale : 0.4
-
+    dofVelocityRewardScale: -0.0002
+    dofAccelerationRewardScale : -0.0000004 
+    actionChangeRewardScale: -0.01
+    jointLimitRewardScale: 0.4
+    slipRewardScale: -0.3
+    maxFootHeightReward: 0.10
+    clearanceRewardScale: -50.0
+    baseFlatRewardScale: -5.0
 
     # normalization
     linearVelocityScale: 1.0 #2.0
