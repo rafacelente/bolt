@@ -38,6 +38,7 @@ from isaacgymenvs.tasks.base.vec_task import VecTask
 
 from typing import Tuple, Dict
 import wandb
+import matplotlib.pyplot as plt
 
 
 class Bolt(VecTask):
@@ -106,6 +107,9 @@ class Bolt(VecTask):
         self.max_episode_length = int(self.max_episode_length_s / self.dt + 0.5)
         self.Kp = self.cfg["env"]["control"]["stiffness"]
         self.Kd = self.cfg["env"]["control"]["damping"]
+        self.create_visualizations = False
+
+        self.target_buffer = torch.tensor([], dtype=torch.float, device=self.device, requires_grad=False)
 
         for key in self.rew_scales.keys():
             self.rew_scales[key] *= self.dt
@@ -288,13 +292,45 @@ class Bolt(VecTask):
 
         self.base_index = torch.tensor(self.gym.find_actor_rigid_body_handle(self.envs[0], self.bolt_handles[0], base_name))
 
+    def _create_visualizations(self, targets, initial_buffer=100, final_buffer=1200, name="Torques"):
+        self.target_buffer = torch.cat((self.target_buffer, targets[:]), dim=0)
+
+        if self.progress_buf >= initial_buffer and self.progress_buf < initial_buffer + 1:
+            self.first_100 = self.target_buffer.clone()
+        
+        if self.progress_buf >= final_buffer and self.progress_buf < final_buffer + 1:
+            fig = plt.subplots(1,6, figsize=(30, 5))
+            plt.suptitle(f"Histogram of {name} over the first {final_buffer} steps")
+            for i in range(6):
+                plt.subplot(1,6,i+1)
+                plt.hist(self.target_buffer[:, i].cpu().numpy(), bins=50)
+                plt.title(f"Joint {self.dof_names[i]}")
+            
+            print(f"Target buffer shape: {self.first_100}")
+
+            fig = plt.subplots(1,6, figsize=(30, 5))
+            plt.suptitle(f"First {initial_buffer} {name}")
+            # Target 1
+            for i in range(6):
+                plt.subplot(1,6,i+1)
+                plt.plot(self.first_100[:, i].cpu().numpy())
+                plt.title(f"Joint {self.dof_names[i]}")
+            plt.show()
+
+
 
     def pre_physics_step(self, actions):
         self.last_actions[:] = self.actions[:]
         self.actions = actions.clone().to(self.device)
+
         # TODO: Is action_scale necessary? It's default to 0.5 in the config file
         targets = self.action_scale * self.actions + self.default_dof_pos
         self.gym.set_dof_position_target_tensor(self.sim, gymtorch.unwrap_tensor(targets))
+        
+        if self.create_visualizations:
+            #self._create_visualizations(self.torques, initial_buffer=100, final_buffer=500, name="Torques")
+            self._create_visualizations(self.dof_pos, initial_buffer=100, final_buffer=500, name="Joint Positions")
+
 
     def post_physics_step(self):
         self.progress_buf += 1
@@ -337,8 +373,8 @@ class Bolt(VecTask):
         rew_action_change = torch.sum(torch.square(self.actions - self.last_actions), dim=1) * self.rew_scales["action_change"]
 
         # Penalty on difference between current position and initial position
-        rew_joint_limit = torch.exp(-torch.norm(self.dof_pos - self.default_dof_pos, dim=1)) * self.rew_scales["joint_limit"]
-
+        rew_joint_limit = torch.exp(-torch.norm(self.dof_pos- self.default_dof_pos, dim=1)) * self.rew_scales["joint_limit"]
+        
         # foot slip penalty (solo 12 article)
         contact = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=2) > 1
         rew_slip = torch.sum(contact * torch.square(torch.norm(self.foot_velocities[:, :, :2], dim = 2)), dim = 1) * self.rew_scales["slip"]
@@ -364,12 +400,12 @@ class Bolt(VecTask):
         total_reward = torch.clip(total_reward, 0., None)
 
         # reset agents
-        reset_kneeling = torch.any(self.knee_positions[:, :, 2] - self.foot_positions[:, :, 2] < 0.1, dim=1)
-        # reset1 = torch.norm(self.contact_forces[:, self.base_index, :], dim=1) > 1.
+        reset_kneeling = torch.any(self.knee_positions[:, :, 2] - self.foot_positions[:, :, 2] < 0.0, dim=1)
+        reset_base = torch.norm(self.contact_forces[:, self.base_index, :], dim=1) > 1.
+        reset_knee = torch.any(torch.norm(self.contact_forces[:, self.knee_indices, :], dim=2) > 1., dim=1)
         # reset2 = torch.any(torch.norm(self.contact_forces[:, self.shoulder_indices, :], dim=2) > 1., dim=1)
-        # reset3 = torch.any(torch.norm(self.contact_forces[:, self.knee_indices, :], dim=2) > 1., dim=1)
         time_out = self.progress_buf >= self.max_episode_length - 1  # no terminal reward for time-outs
-        reset = reset_kneeling | time_out
+        reset = reset_kneeling | reset_base | reset_knee | time_out
 
         # log metrics
         all_rewards = [
@@ -559,7 +595,7 @@ def compute_bolt_reward(
     return total_reward.detach(), reset
 
 
-@torch.jit.script
+#@torch.jit.script
 def compute_bolt_observations(root_states,
                                 commands,
                                 dof_pos,

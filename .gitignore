@@ -12,3 +12,10 @@ IsaacGymEnvs/isaacgymenvs.egg-info/
 **/__pycache__/
 launch_simulations.py
 runs/*
+Figure_*
+first_100_join_positions.png
+histogram_joint_positions.png
+bolt-replay.zip
+bolt-replay
+quadruped-replay
+test_matplotlib.py
