@@ -67,8 +67,9 @@ class Bolt(VecTask):
         self.rew_scales["slip"] = self.cfg["env"]["learn"]["slipRewardScale"]
         self.rew_scales["joint_limit"] = self.cfg["env"]["learn"]["jointLimitRewardScale"]
         #self.rew_scales["base_flat"] = self.cfg["env"]["learn"]["baseFlatRewardScale"]
-        self.rew_scales["maxHeight"] = self.cfg["env"]["learn"]["maxFootHeightReward"]
         self.rew_scales["clearance"] = self.cfg["env"]["learn"]["clearanceRewardScale"]
+
+        self.max_height = self.cfg["env"]["learn"]["footHeightTarget"]
 
         # randomization
         self.randomization_params = self.cfg["task"]["randomization_params"]
@@ -380,7 +381,7 @@ class Bolt(VecTask):
         rew_slip = torch.sum(contact * torch.square(torch.norm(self.foot_velocities[:, :, :2], dim = 2)), dim = 1) * self.rew_scales["slip"]
 
         # foot clearance penalty (solo 12 article)
-        rew_clearance = torch.sum(torch.square(self.foot_positions[:, :, 2] - self.rew_scales["maxHeight"]) * torch.sqrt(torch.norm(self.foot_velocities[:, :, :2], dim = 2)), dim = 1) * self.rew_scales["clearance"]
+        rew_clearance = torch.sum(torch.square(self.foot_positions[:, :, 2] - self.max_height) * torch.sqrt(torch.norm(self.foot_velocities[:, :, :2], dim = 2)), dim = 1) * self.rew_scales["clearance"]
 
         # power loss penalty (solo 12 article)
         #rew_power_loss = torch.sum() * rew_scales["power_loss"]
@@ -536,9 +537,10 @@ def compute_bolt_reward(
     foot_positions,
     foot_velocities,
     feet_indices,
+    max_height
 ):
     # (reward, reset, feet_in air, feet_air_time, episode sums)
-    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Dict[str, float], int, int, Tensor, Tensor, Tensor) -> Tuple[Tensor, Tensor]
+    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Dict[str, float], int, int, Tensor, Tensor, Tensor, float) -> Tuple[Tensor, Tensor]
 
     #print(f"feet_indices: {type(feet_indices)}")
     # prepare quantities (TODO: return from obs ?)
@@ -565,7 +567,7 @@ def compute_bolt_reward(
     rew_balance = torch.sum(torch.square(base_ang_vel[:, :2]), dim=1) * rew_scales["balance_rotation"]
 
     # foot clearance penalty (solo 12 article)
-    rew_clearance = torch.sum(torch.square(foot_positions[:, :, 2] - rew_scales["maxHeight"]) * torch.sqrt(torch.norm(foot_velocities[:, :, :2], dim = 2)), dim = 1) * rew_scales["clearance"]
+    rew_clearance = torch.sum(torch.square(foot_positions[:, :, 2] - max_height) * torch.sqrt(torch.norm(foot_velocities[:, :, :2], dim = 2)), dim = 1) * rew_scales["clearance"]
 
     # bipedal stability penalty (thx to the gravity vector at the center of mass)
     #rew_stability = 
