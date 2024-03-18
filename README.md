@@ -1,6 +1,8 @@
 # bolt
 
-This repository contains the training code for Bolt's journey of learning to walk.
+This repository contains the training code for Bolt's journey of learning to walk using Deep Reinforcement Learning.
+
+This project was done by the following students during ISAE-SUPAERO's PIE. The full report (in french) can be found on `docs/`.
 
 ![Bolts walking](./docs/images/bolts_walking.png)
 
@@ -70,8 +72,8 @@ The environment, agent, and reward definitions can be found on `./IsaacGymEnvs/i
 
 ## Contact
 
-This project was done by the following students during ISAE-SUPAERO's PIE.
-
 - Lucie Mouille: mouillelucie@orange.fr
 - Guillaume Berthelot : guiberthelot@gmail.com
 - Rafael Celente: rafaelmcelente@gmail.com
+- Maxime Ségura: 
+- Alexandre Gouiller: 
