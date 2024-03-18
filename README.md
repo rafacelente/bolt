@@ -68,3 +68,10 @@ The URDF used for this project was slightly changed from the base URDF from ODRI
 The environment, agent, and reward definitions can be found on `./IsaacGymEnvs/isaacgymenvs/tasks/bolt.py`. Its configuration file can be found on `./IsaacGymEnvs/isaacgymenvs/cfg/task/Bolt.yaml`. For the RL algorithm, its configuration file can be found on `./IsaacGymEnvs/isaacgymenvs/cfg/train/BoltPPO.yaml`.
 
 
+## Contact
+
+This project was done by the following students during ISAE-SUPAERO's PIE.
+
+- Lucie Mouille: mouillelucie@orange.fr
+- Guillaume Berthelot : guiberthelot@gmail.com
+- Rafael Celente: rafaelmcelente@gmail.com
