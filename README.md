@@ -42,13 +42,20 @@ This repo comes prepacked with [IsaacGymEnvs](https://github.com/NVIDIA-Omnivers
     conda env config vars set VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia_icd.json --name $CONDA_DEFAULT_ENV
     ```
 
-## Launching a training session
+## Launching a training/simulation session
 
-All training/simulation is done through the the script `./IsaacGymEnvs/isaacgymenvs/train.py`. The default configuration parameters for the training can be found on `.IsaacGymEnvs/isaacgymenvs/cfg/config.yaml`. An example training job is:
+All training/simulation is done through the the script `./IsaacGymEnvs/isaacgymenvs/train.py`. The default configuration parameters can be found on `.IsaacGymEnvs/isaacgymenvs/cfg/config.yaml`. An example training job is:
 
 ```bash
 python train.py python train.py task=Bolt wandb_activate=True headless=False num_envs=1024 headless=True max_iterations=1000
 ```
+
+Some (not all) pertinent flags:
+-  `test=True`: launches a simulation session (no training)
+- `max_iterations=1000`: Sets the number of training epochs.
+- `checkpoint=/path/to/model.pth`: Executes a training/simulation sessions starting from a given pre-trained model.
+-  `num_envs=1024`: Number of vectorized environments in the training run.
+- `wandb_activate=True`: activates Weights and Biases logging. Make sure you have `wandb` and [log in with your wandb account](https://docs.wandb.ai/ref/cli/wandb-login).
 
 ## Bolt configuration
 
@@ -58,5 +65,6 @@ The URDF used for this project was slightly changed from the base URDF from ODRI
 
 ### Simulation and Environment
 
-The environment, agent, and reward definitions can be found on `./IsaacGymEnvs/isaacgymenvs/tasks/bolt.py`. Its configuration file can be found on `./IsaacGymEnvs/isaacgymenvs/cfg/task/Bolt.yaml`.
+The environment, agent, and reward definitions can be found on `./IsaacGymEnvs/isaacgymenvs/tasks/bolt.py`. Its configuration file can be found on `./IsaacGymEnvs/isaacgymenvs/cfg/task/Bolt.yaml`. For the RL algorithm, its configuration file can be found on `./IsaacGymEnvs/isaacgymenvs/cfg/train/BoltPPO.yaml`.
+
 
